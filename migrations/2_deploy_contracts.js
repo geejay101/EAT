@@ -1,33 +1,30 @@
 var colors = require('colors/safe');
 
-
-var Token = artifacts.require("RealistoToken");
+var Token = artifacts.require("EatMeCoin");
 var Campaign = artifacts.require("TokenCampaign");
 var TokenFactory = artifacts.require("MiniMeTokenFactory");
-var TokenVault = artifacts.require("TokenVault");
 
 // addresses in our private test net
 // CHANGE before deploy
 
-var issuerAddr = '0x09280db720fa5a3b7c08af4d1cff760f21b075d4';
-var trusteeAddr = '0x863352e9b120686df29f3b5ad963ff53c4275934';
-var bountyAddr = '0xE664F98e4929379b648A3D1733a2579ABafaAE20';
-var robotAddr = '0xF7Ab4F8212331f74c07F1351B456E562Da827Dbc';
-var opAddr = '0xE40213F88F577a58dc26990c71F45abCce4134c9';
+var issuerAddr = '0x627306090abaB3A6e1400e9345bC60c78a8BEf57';
+var teamAddr = '0xf17f52151EbEF6C7334FAD080c5704D77216b732';
+var trusteeAddr = '0xc5fdf4076b8f3a5357c5e395ab970b5b54098fef';
+var reserveAddr = '0x821aea9a577a9b44299b9c15c88cf3087f3b5544';
+var opAddr = '0x0d1d4e623d10f9fba5db95830f7d3839406c6af2';
 
 // in seconds        s    m    h    d   m 
-var tLockDuration = 60 * 60 * 24 * 30 * 12; //12 months
+var tLockDuration = 60 * 60 * 24 * 30 * 1; //1 month
 //var tLockDuration = 60 * 30; // 30 minutes for testing
 
 
 // need them globaly
 var tokenAddr;
 var campaignAddr;
-var teamAddr;
-
 
 module.exports = function(deployer, network, accounts) {
 	var issuer = issuerAddr;
+	var team = teamAddr;
 	var trustee = trusteeAddr;
 	var controller = issuer;
 	var token_version = 1;
@@ -36,9 +33,9 @@ module.exports = function(deployer, network, accounts) {
 	
 
 	console.log("The token contract will be issued from address " + issuer);
+	console.log("Setting team address to " + team);
 	console.log("Setting trustee address to " + trustee);
 	console.log("Setting campaign controller to " + controller);
-	console.log("Setting team address to " + teamAddr);
 	
 	// deploy Token Factory contract
 	deployer.deploy(TokenFactory)
@@ -55,29 +52,17 @@ module.exports = function(deployer, network, accounts) {
 				// deploy Token Factory contract
 				return deployer.deploy(Campaign, 
 					tokenAddr,
+					teamAddr,
 					trusteeAddr,
 					opAddr,
-					bountyAddr,
-					robotAddr);})
+					reserveAddr);})
 		.then(
 			function(){
 				campaignAddr = Campaign.address;
 				console.log(colors.yellow.bold("##! Campaign contract deployed at \n    " + campaignAddr));
-				return deployer.deploy(TokenVault,
-					tokenAddr,
-					campaignAddr,
-	 				tLockDuration);})
-		.then(
-			function(){
-				teamAddr = TokenVault.address;
-				console.log(colors.yellow.bold("##! TeamVault contract deployed at \n    " + teamAddr));
 				console.log("Performing post deploy actions...")
 			  
 			  Token.at(tokenAddr).then(
 						function(instance){
-							instance.setGenerateAddr(campaignAddr);});
-			  
-			  Campaign.at(campaignAddr).then(
-			  		function(instance){
-			  			instance.setTeamAddr(teamAddr);})});};
+							instance.setGenerateAddr(campaignAddr);})});};
 

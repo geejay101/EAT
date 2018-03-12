@@ -1,17 +1,16 @@
 // This is the code fot the smart contract 
-// used for the Realisto ICO 
+// used for the EatMeCoin Crowdsale 
 //
-// @author: Pavel Metelitsyn
+// @author: Pavel Metelitsyn, Geejay101
 // September 2017
 
 
 pragma solidity ^0.4.15;
 
 import "./library.sol";
-import "./RealistoToken.sol";
-import "./LinearTokenVault.sol";
+import "./EatMeCoin.sol";
 
-contract rea_token_interface{
+contract eat_token_interface{
   uint8 public decimals;
   function generate_token_for(address _addr,uint _amount) returns (bool);
   function finalize();
@@ -23,11 +22,8 @@ contract TokenCampaign is Controlled{
   using SafeMath for uint256;
 
   // this is our token
-  rea_token_interface public token;
+  eat_token_interface public token;
 
-  TokenVault teamVault;
-
- 
   ///////////////////////////////////
   //
   // constants related to token sale
@@ -38,13 +34,10 @@ contract TokenCampaign is Controlled{
 
   // percent of tokens to be generated for the team
   uint256 public constant PRCT_TEAM = 10;
-  // percent of tokens to be generated for bounty
-  uint256 public constant PRCT_BOUNTY = 3;
- 
-  // we keep ETH in the contract until the sale is finalized
-  // however a small part of every contribution goes to opperational costs
+
+  // we keep half of the ETH in the contract until the sale is finalized
   // percent of ETH going to operational account
-  uint256 public constant PRCT_ETH_OP = 10;
+  uint256 public constant PRCT_ETH_OP = 50;
 
   uint8 public constant decimals = 18;
   uint256 public constant scale = (uint256(10) ** decimals);
@@ -52,24 +45,31 @@ contract TokenCampaign is Controlled{
 
   // how many tokens for one ETH
   // we may adjust this number before deployment based on the market conditions
-  uint256 public constant baseRate = 300; //<-- unscaled
+  uint256 public constant baseRate = 50; //<-- unscaled
 
   // we want to limit the number of available tokens during the bonus stage 
   // payments during the bonus stage will not be accepted after the TokenTreshold is reached or exceeded
   // we may adjust this number before deployment based on the market conditions
 
-  uint256 public constant bonusTokenThreshold = 7647120 * scale ; //<--- new 
+  uint256 public constant bonusTokenThreshold = 200000 * scale ; //<--- new 
+  uint256 public constant crowdTokenThreshold = 800000 * scale ; //<--- new 
+
+  uint256 public constant hardcap = 1000000 * scale ; //<--- new 
+
 
   // minmal contribution, Wei
   uint256 public constant minContribution = (5 ether) / 100;
 
+  // maximal contribution, Wei
+  // uint256 public constant maxContribution = (10 ether);
+
   // bonus structure, Wei
-  uint256 public constant bonusMinContribution = (5 ether);
+  uint256 public constant bonusMinContribution = (10 ether);
+
   // 
-  uint256 public constant bonusAdd = 90; // + 30% <-- corrected
-  uint256 public constant stage_1_add = 45;// + 15% <-- corrected
-  uint256 public constant stage_2_add = 30;// + 10%
-  uint256 public constant stage_3_add = 15;// + 5%
+  uint256 public constant bonus_stage_tokens = 70; // 30% bonus
+  uint256 public constant stage_1_tokens = 60;// 20% bonus
+  uint256 public constant stage_2_tokens = 55;// 10% bonus
   
   ////////////////////////////////////////////////////////
   //
@@ -78,11 +78,10 @@ contract TokenCampaign is Controlled{
   // an address if it is compromised or something happens
 
   // destination for team's share
-  // this should point to an instance of TokenVault contract
-  address public teamVaultAddr = 0x0;
+  address public teamVaultAddr;
   
   // destination for reward tokens
-  address public bountyVaultAddr;
+  address public reserveVaultAddr;
 
   // destination for collected Ether
   address public trusteeVaultAddr;
@@ -94,13 +93,6 @@ contract TokenCampaign is Controlled{
   // adress of our token
   address public tokenAddr;
 
-
-  // address of our bitcoin payment processing robot
-  // the robot is allowed to generate tokens without
-  // sending ether
-  // we do it to have more granular rights controll 
-  address public robotAddr;
-  
   
   /////////////////////////////////
   // Realted to Campaign
@@ -122,10 +114,6 @@ contract TokenCampaign is Controlled{
   // total Ether raised (= Ether paid into the contract)
   uint256 public amountRaised = 0; 
 
-  
-  // this is the address where the funds 
-  // will be transfered after the sale ends
-  
   // time in seconds since epoch 
   // set to midnight of saturday January 1st, 4000
   uint256 public tCampaignStart = 64060588800;
@@ -133,21 +121,9 @@ contract TokenCampaign is Controlled{
   uint256 public tRegSaleStart = 8 * (1 days);
   uint256 public t_1st_StageEnd = 15 * (1 days);
   uint256 public t_2nd_StageEnd = 22* (1 days);
-  uint256 public t_3rd_StageEnd = 29 * (1 days);
   uint256 public tCampaignEnd = 38 * (1 days);
   uint256 public tFinalized = 64060588800;
 
-  //////////////////////////////////////////////
-  //
-  // Modifiers
-
-  /// @notice The robot is allowed to generate tokens 
-  ///   without sending ether
-  ///  We do it to have more granular rights controll 
-  modifier onlyRobot () { 
-   require(msg.sender == robotAddr); 
-   _;
-  }
 
   //////////////////////////////////////////////
   //
@@ -166,30 +142,28 @@ contract TokenCampaign is Controlled{
 
   /// @notice Constructor
   /// @param _tokenAddress Our token's address
-  /// @param  _trusteeAddress Team share 
-  /// @param  _opAddress Team share 
-  /// @param  _bountyAddress Team share 
-  /// @param  _robotAddress Address of our processing backend
+  /// @param  _trusteeAddress Trustee address
+  /// @param  _opAddress Operational expenses address 
+  /// @param  _reserveAddress Project Token Reserve
   function TokenCampaign(
     address _tokenAddress,
+    address _teamAddress,
     address _trusteeAddress,
     address _opAddress,
-    address _bountyAddress,
-    address _robotAddress)
+    address _reserveAddress)
   {
 
     controller = msg.sender;
     
     /// set addresses     
     tokenAddr = _tokenAddress;
-    //teamVaultAddr = _teamAddress;
+    teamVaultAddr = _teamAddress;
     trusteeVaultAddr = _trusteeAddress; 
     opVaultAddr = _opAddress;
-    bountyVaultAddr = _bountyAddress;
-    robotAddr = _robotAddress;
+    reserveVaultAddr = _reserveAddress;
 
     /// reference our token
-    token = rea_token_interface(tokenAddr);
+    token = eat_token_interface(tokenAddr);
    
     // adjust 'constants' for decimals used
     // decimals = token.decimals(); // should be 18
@@ -221,21 +195,18 @@ contract TokenCampaign is Controlled{
     
     // compute rate per ETH based on time
     // assumes that time marks are increasing
-    // from tBonusStageEnd through t_3rd_StageEnd
+    // from tBonusStageEnd through t_2nd_StageEnd
     // adjust by factor 'scale' depending on token's decimals
     // NOTE: can't cause overflow since all numbers are known at compile time
     if (now <= tBonusStageEnd)
-      return scale * (baseRate + bonusAdd);
+      return scale * (bonus_stage_tokens);
 
     if (now <= t_1st_StageEnd)
-      return scale * (baseRate + stage_1_add);
+      return scale * (stage_1_tokens);
     
     else if (now <= t_2nd_StageEnd)
-      return scale * (baseRate + stage_2_add);
-    
-    else if (now <= t_3rd_StageEnd)
-      return scale * (baseRate + stage_3_add);
-    
+      return scale * (stage_2_tokens);
+
     else 
       return baseRate * scale; 
   }
@@ -249,19 +220,6 @@ contract TokenCampaign is Controlled{
   /// Setters
   ///
 
-
-  /// this is only for emergency case
-  function setRobotAddr(address _newRobotAddr) public onlyController {
-    require( _newRobotAddr != 0x0 );
-    robotAddr = _newRobotAddr;
-  }
-
-  // we have to set team token address before campaign start
-  function setTeamAddr(address _newTeamAddr) public onlyController {
-     require( campaignState > 2 && _newTeamAddr != 0x0 );
-     teamVaultAddr = _newTeamAddr;
-     teamVault = TokenVault(teamVaultAddr);
-  }
  
 
 
@@ -270,8 +228,7 @@ contract TokenCampaign is Controlled{
   ///  only possible if team token Vault is set up
   ///  WARNING: usual caveats apply to the Ethereum's interpretation of time
   function startSale() public onlyController {
-    // we only can start if team token Vault address is set
-    require( campaignState > 2 && teamVaultAddr != 0x0);
+    require( campaignState > 2 );
 
     campaignState = 2;
 
@@ -282,7 +239,6 @@ contract TokenCampaign is Controlled{
     tRegSaleStart += tNow;
     t_1st_StageEnd += tNow;
     t_2nd_StageEnd += tNow;
-    t_3rd_StageEnd += tNow;
     tCampaignEnd += tNow;
 
     CampaignOpen(now);
@@ -323,7 +279,7 @@ contract TokenCampaign is Controlled{
 
 
   /// @notice Finalizes the campaign
-  ///   Get funds out, generates team, bounty and reserve tokens
+  ///   Get funds out, generates team, reserve and reserve tokens
   function finalizeCampaign() public {     
       
       /// only if sale was closed or 48 hours = 2880 minutes have passed since campaign end
@@ -345,18 +301,17 @@ contract TokenCampaign is Controlled{
       trusteeVaultAddr.transfer(this.balance);
       
       
-      uint256 bountyTokens = (tokensGenerated.mul(PRCT_BOUNTY)).div(100);
+      // uint256 reserveTokens = (tokensGenerated.mul(PRCT_RESERVE)).div(100);
+
+      uint256 reserveTokens = hardcap.sub(tokensGenerated);
       
       uint256 teamTokens = (tokensGenerated.mul(PRCT_TEAM)).div(100);
       
-      // generate bounty tokens 
-      assert( do_grant_tokens(bountyVaultAddr, bountyTokens) );
+      // generate reserve tokens 
+      assert( do_grant_tokens(reserveVaultAddr, reserveTokens) );
+
+
       // generate team tokens
-      // time lock team tokens before transfer
-      
-      // we dont use it anymore
-      //teamVault.setTimeLock( tCampaignEnd + 6 * (6 minutes));  
-      
       tFinalized = now;
 
       // generate all the tokens
@@ -373,7 +328,7 @@ contract TokenCampaign is Controlled{
   /// @notice triggers token generaton for the recipient
   ///  can be called only from the token sale contract itself
   ///  side effect: increases the generated tokens counter 
-  ///  CAUTION: we do not check campaign state and parameters assuming that's calee's task
+  ///  CAUTION: we do not check campaign state and parameters assuming that's callee's task
   function do_grant_tokens(address _to, uint256 _nTokens) internal returns (bool){
     
     require( token.generate_token_for(_to, _nTokens) );
@@ -406,13 +361,22 @@ contract TokenCampaign is Controlled{
         (tokensGenerated >= bonusTokenThreshold))) //<--- new, revert if bonusThreshold is exceeded 
     {
       revert();
-    }      
+    }     
 
+    if ((now <= tCampaignEnd) && 
+        (tokensGenerated >= crowdTokenThreshold)) //<--- new, revert if crowdTokenThreshold is exceeded 
+    {
+      revert();
+    }    
     
   
     // otherwise we check that Eth sent is sufficient to generate at least one token
     // though our token has decimals we don't want nanocontributions
     require ( msg.value >= minContribution );
+
+    // we are capping the max contribution
+    // require ( msg.value <= maxContribution );
+
 
     // compute the rate
     // NOTE: rate is scaled to account for token decimals
@@ -431,7 +395,6 @@ contract TokenCampaign is Controlled{
     // side effect: do_grant_tokens updates the "tokensGenerated" variable
     require( do_grant_tokens(_toAddr, nTokens) );
 
-
     amountRaised = amountRaised.add(msg.value);
     
     // notify the world
@@ -440,47 +403,18 @@ contract TokenCampaign is Controlled{
   }
 
 
-  /// @notice Gnenerate token "manually" without payment
-  ///  We intend to use this to generate tokens from Bitcoin contributions without 
-  ///  without Ether being sent to this contract
-  ///  Note that this function can be triggered only by our BTC processing robot.  
-  ///  A string reference is passed and logged for better book keeping
-  ///  side effect: increases the generated tokens counter via do_grant_tokens
-  /// @param _toAddr benificiary address
-  /// @param _nTokens amount of tokens to be generated
-  /// @param _ref payment reference e.g. Bitcoin address used for contribution 
-  function grant_token_from_offchain(address _toAddr, uint _nTokens, string _ref) public onlyRobot {
-    require ( (campaignState == 2)
-              ||(campaignState == 1));
-
-    do_grant_tokens(_toAddr, _nTokens);
-    TokenGranted(_toAddr, _nTokens, _ref);
-  }
-
-
   /// @notice This function handles receiving Ether in favor of a third party address
   ///   we can use this function for buying tokens on behalf
   /// @param _toAddr the address which will receive tokens
   function proxy_contribution(address _toAddr) public payable {
     require ( _toAddr != 0x0 );
-    /// prevent contracts from buying tokens
-    /// we assume it is still usable for a while
-    /// we aknowledge the fact that this prevents ALL contracts including MultiSig's
-    /// from contributing, it is intended and we add a corresponding statement 
-    /// to our Terms and the ICO site
-    require( msg.sender == tx.origin );
+
     process_contribution(_toAddr);
   }
 
 
   /// @notice This function handles receiving Ether
   function () payable {
-    /// prevent contracts from buying tokens
-    /// we assume it is still usable for a while
-    /// we aknowledge the fact that this prevents ALL contracts including MultiSig's
-    /// from contributing, it is intended and we add a corresponding statement 
-    /// to our Terms and the ICO site
-    require( msg.sender == tx.origin );
     process_contribution(msg.sender);  
   }
 

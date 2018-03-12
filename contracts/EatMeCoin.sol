@@ -3,7 +3,7 @@ pragma solidity ^0.4.15;
 import "./library.sol";
 import "./MiniMeToken.sol";
 
-contract RealistoToken is MiniMeToken { 
+contract EatMeCoin is MiniMeToken { 
 
   // we use this variable to store the number of the finalization block
   uint256 public checkpointBlock;
@@ -22,14 +22,14 @@ contract RealistoToken is MiniMeToken {
   }
 
   // Constructor
-  function RealistoToken(address _tokenFactory) 
+  function EatMeCoin(address _tokenFactory) 
     MiniMeToken(
       _tokenFactory,
       0x0,
       0,
-      "Realisto Token",
+      "EatMeCoin",
       18, // decimals
-      "REA",
+      "EAT",
       // SHOULD TRANSFERS BE ENABLED? -- NO
       false){
     
