@@ -125,6 +125,17 @@ contract TokenCampaign is Controlled{
   uint256 public tFinalized = 64060588800;
 
 
+  bool public isWhiteListed;
+
+  struct WhiteListData {
+    bool status;
+    uint minCap;
+    uint maxCap;
+  }
+
+  /** Whitelisted addresses */
+  mapping (address => WhiteListData) public participantWhitelist;
+
   //////////////////////////////////////////////
   //
   // Events
@@ -138,7 +149,11 @@ contract TokenCampaign is Controlled{
   event TotalRaised(uint raised);
   event Finalized(uint256);
   event ClaimedTokens(address indexed _token, address indexed _controller, uint _amount);
- 
+
+  // Address early participation whitelist status changed
+  event Whitelisted(address addr, bool status);
+
+
 
   /// @notice Constructor
   /// @param _tokenAddress Our token's address
@@ -277,6 +292,27 @@ contract TokenCampaign is Controlled{
   }   
 
 
+  function setParticipantWhitelist(address addr, bool status, uint minCap, uint maxCap) onlyOwner {
+    if (!isWhiteListed) throw;
+    participantWhitelist[addr] = WhiteListData({status:status, minCap:minCap, maxCap:maxCap});
+    Whitelisted(addr, status);
+  }
+
+  function setMultipleParticipantWhitelist(address[] addrs, bool[] statuses, uint[] minCaps, uint[] maxCaps) onlyOwner {
+    if (!isWhiteListed) throw;
+    for (uint iterator = 0; iterator < addrs.length; iterator++) {
+      setParticipantWhitelist(addrs[iterator], statuses[iterator], minCaps[iterator], maxCaps[iterator]);
+    }
+  }
+
+  function updateParticipantWhitelist(address addr, address contractAddr, uint tokensBought) {
+    if (tokensBought < participantWhitelist[addr].minCap) throw;
+    if (!isWhiteListed) throw;
+    if (addr != msg.sender && contractAddr != msg.sender) throw;
+    uint newMaxCap = participantWhitelist[addr].maxCap;
+    newMaxCap = newMaxCap.minus(tokensBought);
+    participantWhitelist[addr] = WhiteListData({status:participantWhitelist[addr].status, minCap:0, maxCap:newMaxCap});
+  }
 
   /// @notice Finalizes the campaign
   ///   Get funds out, generates team, reserve and reserve tokens
@@ -318,7 +354,24 @@ contract TokenCampaign is Controlled{
       assert( do_grant_tokens(teamVaultAddr, teamTokens) );
       
       // prevent further token generation
-      token.finalize();     
+      token.finalize();
+
+
+      // 
+      if (isWhiteListed) {
+        uint num = 0;
+        for (var i = 0; i < joinedCrowdsalesLen; i++) {
+          if (this == joinedCrowdsales[i]) 
+            num = i;
+        }
+
+        if (num + 1 < joinedCrowdsalesLen) {
+          for (var j = num + 1; j < joinedCrowdsalesLen; j++) {
+            CrowdsaleExt crowdsale = CrowdsaleExt(joinedCrowdsales[j]);
+            crowdsale.updateParticipantWhitelist(msg.sender, this, tokenAmount);
+          }
+        }
+      }
 
       // notify the world
       Finalized(tFinalized);
