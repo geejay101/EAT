@@ -12,7 +12,7 @@ var stateNames = ["finalized, not accepting funds",
 
 module.exports = function(callback){
 	var campaign;
-	var bonusThreshold,goal;
+	var preCrowdThreshold,goal;
 	var trustee, op, reserve, team;
 	var tokenAddr;
 	var raised, available, generated;
@@ -32,8 +32,8 @@ module.exports = function(callback){
 			function(){
 				return Promise.all([
 
-					campaign.bonusTokenThreshold.call().then(
-						(x)=>{bonusThreshold = x}),
+					campaign.preCrowdTokenThreshold.call().then(
+						(x)=>{preCrowdThreshold = x}),
 
 					campaign.reserveVaultAddr.call().then(
 						(x)=>{reserve = x}),
@@ -49,11 +49,8 @@ module.exports = function(callback){
 
 					campaign.paused.call().then(
 						(x)=>{isPaused = x}),
-					
-					campaign.get_presale_goal.call().then(
-						(x)=>{goal = x}),
 
-					campaign.tBonusStageEnd.call().then(
+					campaign.tPreCrowdStageEnd.call().then(
 						(x)=>{presaleEnd = x}),
 
 					campaign.teamVaultAddr.call().then(
@@ -97,7 +94,7 @@ module.exports = function(callback){
 				console.log("   Team: " + team);	
 				console.log("   Bounty: " + reserve);
 				
-				console.log(" Presale threshold: " + bonusThreshold/scale );
+				console.log(" Presale threshold: " + preCrowdThreshold/scale );
 				var secondsLeft = (presaleEnd - Date.now()/1000);
 				var minutesLeft = secondsLeft/60;
 				var hoursLeft = minutesLeft/60

@@ -54,13 +54,13 @@ contract EatMeCoin is MiniMeToken {
   /// @notice This function is copy-paste of the generateTokens of the original MiniMi contract
   ///   except it uses mayGenerate modifier (original uses onlyController)
   /// this is because we don't want the Sale campaign contract to be the controller
-  function generate_token_for(address _addrTo, uint _amount) mayGenerate returns (bool) {
+  function generate_token_for(address _addrTo, uint256 _amount) mayGenerate returns (bool) {
     
     //balances[_addr] += _amount;
    
-    uint curTotalSupply = totalSupply();
+    uint256 curTotalSupply = totalSupply();
     require(curTotalSupply + _amount >= curTotalSupply); // Check for overflow    
-    uint previousBalanceTo = balanceOf(_addrTo);
+    uint256 previousBalanceTo = balanceOf(_addrTo);
     require(previousBalanceTo + _amount >= previousBalanceTo); // Check for overflow
     updateValueAtNow(totalSupplyHistory, curTotalSupply + _amount);
     updateValueAtNow(balances[_addrTo], previousBalanceTo + _amount);
@@ -69,7 +69,7 @@ contract EatMeCoin is MiniMeToken {
   }
 
   // overwrites the original function
-  function generateTokens(address _owner, uint _amount
+  function generateTokens(address _owner, uint256 _amount
     ) onlyController returns (bool) {
     revert();
     generate_token_for(_owner, _amount);    

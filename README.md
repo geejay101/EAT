@@ -8,19 +8,19 @@ For more Information and Whitepaper visit www.eatmecoin.com
 
 ## Terms
 
-The crowdsale campaign will last 5 weeks. The first week is a "pre-sale" week. During the presale we want to attract larger-than-average investors by offering a solid bonus in exchange for a minimal contribution. The EAT tokens are not transferrable during the crowdsale. Transfers will be enabled by us within one week after the crowdsale ends.
+The crowdsale campaign will last 5 weeks. The first week is a "pre-sale" week. During the presale we want to attract larger-than-average investors by offering a solid preCrowd in exchange for a minimal contribution. The EAT tokens are not transferrable during the crowdsale. Transfers will be enabled by us within one week after the crowdsale ends.
 
 ### Token price structure
 
 The base rate of the EAT token is set to 50 EAT per 1 ETH.
 
-Addditionaly bonuses apply according to the following scheme
+Addditionaly preCrowdes apply according to the following scheme
 
-| Phase |	Duration | Bonus % | Minimal contribution | EAT/ETH |
+| Phase |	Duration | PreCrowd % | Minimal contribution | EAT/ETH |
 | ----- | --------- | ------- | -------------------- | ---- |
 | Presale | 1 week or until 200000 EAT tokens are sold | +30% | 5 ETH | 70 |
-| Bonus 1 | 1 week  | +15% | 0.1 ETH | 60 |
-| Bonus 2 | 1 week  | +10% | 0.1 ETH | 55 |
+| PreCrowd 1 | 1 week  | +15% | 0.1 ETH | 60 |
+| PreCrowd 2 | 1 week  | +10% | 0.1 ETH | 55 |
 | Base | 1 week  | 0% | 0.1 ETH | 50 |
 
 50% of the incoming ETH is immediately forwarded to our operational wallet to cover costs of ongoing development and marketing work.
