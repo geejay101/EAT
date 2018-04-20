@@ -12,15 +12,7 @@ var stateNames = ["finalized, not accepting funds",
 
 module.exports = function(callback){
 	var campaign;
-	var controller;
-	var trustee;
-	var team;
-	var tokenAddr;
-	var raised, available, generated;
-	
-	var state;
-	var returnCode;
-	
+
 	TokenCampaign.deployed().then(
 		function(instance){
 			console.log(colors.red("# Campaign at " + instance.address))

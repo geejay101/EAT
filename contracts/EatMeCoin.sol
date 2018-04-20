@@ -78,7 +78,7 @@ contract EatMeCoin is MiniMeToken {
 
   // permanently disables generation of new tokens
   function finalize() mayGenerate {
-    tokenGenerationEnabled = false; //<- added after first audit
+    tokenGenerationEnabled = false; 
     checkpointBlock = block.number;
   }  
 }

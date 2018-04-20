@@ -8,7 +8,18 @@ var TokenFactory = artifacts.require("MiniMeTokenFactory");
 // CHANGE before deploy
 
 var issuerAddr = '0x627306090abaB3A6e1400e9345bC60c78a8BEf57';
-var teamAddr = '0xf17f52151EbEF6C7334FAD080c5704D77216b732';
+var dteamAddr1 = '0xf17f52151EbEF6C7334FAD080c5704D77216b732';
+var dteamAddr2 = '0xf17f52151EbEF6C7334FAD080c5704D77216b732';
+var dteamAddr3 = '0xf17f52151EbEF6C7334FAD080c5704D77216b732';
+var dteamAddr4 = '0xf17f52151EbEF6C7334FAD080c5704D77216b732';
+var rteamAddress = '0xf17f52151EbEF6C7334FAD080c5704D77216b732';
+var dteamAddr4 = '0xf17f52151EbEF6C7334FAD080c5704D77216b732';
+var dteamAddr4 = '0xf17f52151EbEF6C7334FAD080c5704D77216b732';
+
+ 227:     address _rteamAddress,
+  228      address _rjdgAddress,
+  229      address _mmAddress,
+
 var trusteeAddr = '0xc5fdf4076b8f3a5357c5e395ab970b5b54098fef';
 var reserveAddr = '0x821aea9a577a9b44299b9c15c88cf3087f3b5544';
 var opAddr = '0x0d1d4e623d10f9fba5db95830f7d3839406c6af2';

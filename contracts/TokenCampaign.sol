@@ -39,7 +39,7 @@ contract TokenCampaign is Controlled {
   // where 100% correspond to the number of sold tokens
 
   // percent of reward tokens to be generated for the D-team
-  uint256 public constant PRCT100_D_TEAM = 250; // % * 100
+  uint256 public constant PRCT100_D_TEAM = 63; // % * 100
   uint256 public constant PRCT100_R_TEAM = 250; // % * 100
  
   uint256 public constant FIXEDREWARD_MM = 1000; // fixed
@@ -104,7 +104,10 @@ contract TokenCampaign is Controlled {
   // an address if it is compromised or something happens
 
   // destination for D-team's share
-  address public dteamVaultAddr;
+  address public dteamVaultAddr1;
+  address public dteamVaultAddr2;
+  address public dteamVaultAddr3;
+  address public dteamVaultAddr4;
 
   // destination for R-team's share
   address public rteamVaultAddr;
@@ -220,7 +223,10 @@ contract TokenCampaign is Controlled {
   /// @param  _reserveAddress Project Token Reserve
   function TokenCampaign(
     address _tokenAddress,
-    address _dteamAddress,
+    address _dteamAddress1,
+    address _dteamAddress2,
+    address _dteamAddress3,
+    address _dteamAddress4,
     address _rteamAddress,
     address _rjdgAddress,
     address _mmAddress,
@@ -233,7 +239,10 @@ contract TokenCampaign is Controlled {
     
     /// set addresses     
     tokenAddr = _tokenAddress;
-    dteamVaultAddr = _dteamAddress;
+    dteamVaultAddr1 = _dteamAddress1;
+    dteamVaultAddr2 = _dteamAddress2;
+    dteamVaultAddr3 = _dteamAddress3;
+    dteamVaultAddr4 = _dteamAddress4;
     rteamVaultAddr = _rteamAddress;
     rjdgVaultAddr = _rjdgAddress;
     mmVaultAddr = _mmAddress;
@@ -424,8 +433,11 @@ contract TokenCampaign is Controlled {
 
       // dteam tokens
       uint256 dteamTokens = (tokensGenerated.mul(PRCT100_D_TEAM)).div(10000);
-      assert( do_grant_tokens(dteamVaultAddr, dteamTokens) );
-      
+      assert( do_grant_tokens(dteamVaultAddr1, dteamTokens) );
+      assert( do_grant_tokens(dteamVaultAddr2, dteamTokens) );
+      assert( do_grant_tokens(dteamVaultAddr3, dteamTokens) );
+      assert( do_grant_tokens(dteamVaultAddr4, dteamTokens) );     
+
       // rteam tokens
       uint256 rteamTokens = (tokensGenerated.mul(PRCT100_R_TEAM)).div(10000);
       assert( do_grant_tokens(rteamVaultAddr, rteamTokens) );
@@ -484,18 +496,18 @@ function investInternal(address receiver, uint128 customerId)  private {
     // Determine if it's a good time to accept investment from this participant
     if(getState() == State.PreFunding) {
       // Are we whitelisted for early deposit
-      throw;
+      revert();
     } else if(getState() == State.Funding) {
       // Retail participants can only come in when the crowdsale is running
       // pass
       if(isWhiteListed) {
-        if(!earlyParticipantWhitelist[receiver].status) {
-          throw;
+        if(!participantWhitelist[receiver].status) {
+          revert();
         }
       }
     } else {
       // Unwanted state
-      throw;
+      revert();
     }
 
     uint256 weiAmount = msg.value;
@@ -505,26 +517,26 @@ function investInternal(address receiver, uint128 customerId)  private {
 
     if(tokenAmount == 0) {
       // Dust transaction
-      throw;
+      revert();
     }
 
     if(isWhiteListed) {
-      if(tokenAmount < earlyParticipantWhitelist[receiver].minCap && tokenAmountOf[receiver] == 0) {
+      if(tokenAmount < participantWhitelist[receiver].minCap && tokenAmountOf[receiver] == 0) {
         // tokenAmount < minCap for investor
-        throw;
+        revert();
       }
-      if(tokenAmount > earlyParticipantWhitelist[receiver].maxCap) {
+      if(tokenAmount > participantWhitelist[receiver].maxCap) {
         // tokenAmount > maxCap for investor
-        throw;
+        revert();
       }
 
       // Check that we did not bust the investor's cap
       if (isBreakingInvestorCap(receiver, tokenAmount)) {
-        throw;
+        revert();
       }
     } else {
       if(tokenAmount < token.minCap() && tokenAmountOf[receiver] == 0) {
-        throw;
+        revert();
       }
     }
 
@@ -547,13 +559,13 @@ function investInternal(address receiver, uint128 customerId)  private {
 
     // Check that we did not bust the cap
     if(isBreakingCap(weiAmount, tokenAmount, weiRaised, tokensSold)) {
-      throw;
+      revert();
     }
 
     assignTokens(receiver, tokenAmount);
 
     // Pocket the money
-    if(!multisigWallet.send(weiAmount)) throw;
+    if(!multisigWallet.send(weiAmount)) revert();
 
     if (isWhiteListed) {
       uint256 num = 0;
