@@ -8,24 +8,20 @@ For more Information and Whitepaper visit www.eatmecoin.com
 
 ## Terms
 
-The crowdsale campaign will last 5 weeks. The first week is a "pre-sale" week. During the presale we want to attract larger-than-average investors by offering a solid preCrowd in exchange for a minimal contribution. The EAT tokens are not transferrable during the crowdsale. Transfers will be enabled by us within one week after the crowdsale ends.
+The crowdsale campaign will last 5 weeks. The EAT tokens are not transferrable during the crowdsale. Transfers will be enabled by us within one week after the crowdsale ends.
 
 ### Token price structure
 
-The base rate of the EAT token is set to 50 EAT per 1 ETH.
+The base rate of the EAT token is set to 5000 EAT per 1 ETH.
 
-Addditionaly preCrowdes apply according to the following scheme
+Tiers
 
-| Phase |	Duration | PreCrowd % | Minimal contribution | EAT/ETH |
+| Tier |	Duration | Tier % | Minimal contribution | EAT/ETH|
 | ----- | --------- | ------- | -------------------- | ---- |
-| Presale | 1 week or until 200000 EAT tokens are sold | +30% | 5 ETH | 70 |
-| PreCrowd 1 | 1 week  | +15% | 0.1 ETH | 60 |
-| PreCrowd 2 | 1 week  | +10% | 0.1 ETH | 55 |
-| Base | 1 week  | 0% | 0.1 ETH | 50 |
-
-50% of the incoming ETH is immediately forwarded to our operational wallet to cover costs of ongoing development and marketing work.
-
-50% are held in the crowdsale contract until the crowdsale is over.
+| Whales | all period | +20% | 20 ETH | 7143 |
+| Stage 1 | 3 days  | +15% | 0.1 ETH | 6250 |
+| Stage 2 | 2 days  | +15% | 0.1 ETH | 5500 |
+| Stage 3 | 5 week  | +20% | 0.1 ETH | 5000 |
 
 ### Contribution
 
@@ -34,14 +30,11 @@ The EAT tokens are not transferrable during the crowdsale. Transfers will be ena
 
 ### Token Generation
 
-Tokens are generated as ETH comes in. There is limit for the total amount of tokens that can be generated during crowdsale. 
+Preallocated tokens for advertisers are generated immediately and cannot be transferred until the crowdsale ends. Sold and airdropped Tokens are generated at the end of the crowdsale. 
 
-After the crowdsale ends we generate an additional
-	- 10% of the sold tokens for the promotion team
-	- 20% of the sold tokens as a reserve 
+After the crowdsale ends we generate also reward tokens
+	- 15% of the sold tokens for the promotion team
+	- max 15% of the sold tokens as a reserve 
 
-After team and reserve tokens are generated the token is finalized i.e. generation is irreversibly disabled by the crowdsale contract.
-
-
- 
+There is limit of 100m Tokens for the total amount of tokens that can be generated during the crowdsale. After team and reserve tokens are generated the token is finalized i.e. generation is irreversibly disabled by the crowdsale contract.
 
