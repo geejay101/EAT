@@ -18,10 +18,10 @@ Tiers
 
 | Tier |	Duration | Tier % | Minimal contribution | EAT/ETH|
 | ----- | --------- | ------- | -------------------- | ---- |
-| Whales | all period | +20% | 20 ETH | 7143 |
-| Stage 1 | 3 days  | +15% | 0.1 ETH | 6250 |
-| Stage 2 | 2 days  | +15% | 0.1 ETH | 5500 |
-| Stage 3 | 5 week  | +20% | 0.1 ETH | 5000 |
+| Whales | all period | 20% | 20 ETH | 7143 |
+| Stage 1 | 3 days  | 15% | 0.1 ETH | 6250 |
+| Stage 2 | 2 days  | 15% | 0.1 ETH | 5500 |
+| Stage 3 | 5 week  | 20% | 0.1 ETH | 5000 |
 
 ### Contribution
 
@@ -34,7 +34,6 @@ Preallocated tokens for advertisers are generated immediately and cannot be tran
 
 After the crowdsale ends we generate also reward tokens
 	- 15% of the sold tokens for the promotion team
-	- max 15% of the sold tokens as a reserve 
 
-There is limit of 100m Tokens for the total amount of tokens that can be generated during the crowdsale. After team and reserve tokens are generated the token is finalized i.e. generation is irreversibly disabled by the crowdsale contract.
+There hardcap is 100m Tokens that can be generated during the crowdsale. Whatever tokens are left after the sale and reward tokens have been issued are kept as a reserve. After all tokens are generated the token is finalized i.e. generation is irreversibly disabled by the crowdsale contract.
 
