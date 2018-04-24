@@ -163,7 +163,7 @@ contract TokenCampaign is Controlled {
   /** participant addresses */
   mapping (address => ParticipantListData) public participantList;
 
-  bool public isWhiteListed = false;
+  bool public isWhiteListed = true;
 
   struct WhiteListData {
     bool status;
@@ -778,6 +778,10 @@ contract TokenCampaign is Controlled {
   function setopVaultAddr(address _newAddr) public onlyController {
     require( _newAddr != 0x0 );
     opVaultAddr = _newAddr;
+  }
+
+  function toggleWhitelist(bool _isWhitelisted) public onlyController {
+    isWhiteListed = _isWhitelisted;
   }
 
   /// @notice This function handles receiving Ether in favor of a third party address
