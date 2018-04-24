@@ -49,7 +49,7 @@ contract TokenCampaign is Controlled {
   uint256 public constant PRCT100_ETH_OP = 7000; // % * 100 , 70%
 
   // preCrowd structure, Wei
-  uint256 public constant preCrowdMinContribution = (10 ether);
+  uint256 public constant preCrowdMinContribution = (20 ether);
 
   // minmal contribution, Wei
   uint256 public constant minContribution = (5 ether) / 100;
@@ -137,7 +137,6 @@ contract TokenCampaign is Controlled {
   // time in seconds since epoch 
   // set to midnight of saturday January 1st, 4000
   uint256 public tCampaignStart = 64060588800;
-  uint256 public tPreCrowdStageEnd = 7 * (1 days); // preCrowd 7 days open
   uint256 public t_1st_StageEnd = 3 * (1 days); // Stage1 3 days open
   uint256 public t_2nd_StageEnd = 2 * (1 days); // Stage2 2 days open
   uint256 public tCampaignEnd = 35 * (1 days); // Stage3 35 days open
@@ -188,6 +187,8 @@ contract TokenCampaign is Controlled {
   event RaisedStage1(address indexed backer, uint256 raised);
   event RaisedStage2(address indexed backer, uint256 raised);
   event RaisedStage3(address indexed backer, uint256 raised);
+  event Airdropped(address indexed backer, uint256 tokensairdropped);
+
 
   event Finalized(uint256 timenow);
 
@@ -259,7 +260,6 @@ contract TokenCampaign is Controlled {
     uint256 tNow = now;
     // assume timestamps will not cause overflow
     tCampaignStart = tNow;
-    tPreCrowdStageEnd += tNow;
     t_1st_StageEnd += tNow;
     t_2nd_StageEnd += tNow;
     tCampaignEnd += tNow;
@@ -631,36 +631,37 @@ contract TokenCampaign is Controlled {
        joinedCrowdsale.push(_toAddr);
     }
 
-    if (now <= tPreCrowdStageEnd) {
-
-      // during the preCrowd stage we require a minimal eth contribution 
-      require ( msg.value >= preCrowdMinContribution );
+    if ( msg.value >= preCrowdMinContribution ) {
 
       participantList[_toAddr].contributedAmountPreCrowd = participantList[_toAddr].contributedAmountPreCrowd.add(msg.value);
       
       // notify the world
       RaisedPreCrowd(_toAddr, msg.value);
 
-    } else if (now <= t_1st_StageEnd) {
-
-      participantList[_toAddr].contributedAmountStage1 = participantList[_toAddr].contributedAmountStage1.add(msg.value);
-
-      // notify the world
-      RaisedStage1(_toAddr, msg.value);
-
-    } else if (now <= t_2nd_StageEnd) {
-
-      participantList[_toAddr].contributedAmountStage2 = participantList[_toAddr].contributedAmountStage2.add(msg.value);
-
-      // notify the world
-      RaisedStage2(_toAddr, msg.value);
-
     } else {
 
-      participantList[_toAddr].contributedAmountStage3 = participantList[_toAddr].contributedAmountStage3.add(msg.value);
-      
-      // notify the world
-      RaisedStage3(_toAddr, msg.value);
+      if (now <= t_1st_StageEnd) {
+
+        participantList[_toAddr].contributedAmountStage1 = participantList[_toAddr].contributedAmountStage1.add(msg.value);
+
+        // notify the world
+        RaisedStage1(_toAddr, msg.value);
+
+      } else if (now <= t_2nd_StageEnd) {
+
+        participantList[_toAddr].contributedAmountStage2 = participantList[_toAddr].contributedAmountStage2.add(msg.value);
+
+        // notify the world
+        RaisedStage2(_toAddr, msg.value);
+
+      } else {
+
+        participantList[_toAddr].contributedAmountStage3 = participantList[_toAddr].contributedAmountStage3.add(msg.value);
+        
+        // notify the world
+        RaisedStage3(_toAddr, msg.value);
+
+      }
 
     }
 
@@ -708,6 +709,31 @@ contract TokenCampaign is Controlled {
     // notify the world
     PreAllocated(_toAddr, weiAmount);
 
+  }
+
+  function airdrop(address _toAddr, uint fullTokens) public onlyController {
+
+    uint tokenAmount = fullTokens * 10**scale;
+
+    if (!participantList[_toAddr].participatedFlag) {
+
+       // A new investor
+       participantList[_toAddr].participatedFlag = true;
+       joinedCrowdsale.push(_toAddr);
+
+    }
+
+    participantList[_toAddr].allocatedTokens = participantList[_toAddr].allocatedTokens.add(tokenAmount);
+
+    // notify the world
+    Airdropped(_toAddr, fullTokens);
+
+  }
+
+  function multiAirdrop(address[] addrs, uint[] fullTokens) public onlyController {
+    for (uint256 iterator = 0; iterator < addrs.length; iterator++) {
+      airdrop(addrs[iterator], fullTokens[iterator]);
+    }
   }
 
   // set individual preCrowd cap
