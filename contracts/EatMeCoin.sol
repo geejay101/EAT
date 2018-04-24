@@ -53,7 +53,6 @@ contract EatMeCoin is MiniMeToken {
   
   /// @notice This function is copy-paste of the generateTokens of the original MiniMi contract
   ///   except it uses mayGenerate modifier (original uses onlyController)
-  /// this is because we don't want the Sale campaign contract to be the controller
   function generate_token_for(address _addrTo, uint256 _amount) mayGenerate returns (bool) {
     
     //balances[_addr] += _amount;
@@ -78,7 +77,8 @@ contract EatMeCoin is MiniMeToken {
 
   // permanently disables generation of new tokens
   function finalize() mayGenerate {
-    tokenGenerationEnabled = false; 
+    tokenGenerationEnabled = false;
+    transfersEnabled = true;
     checkpointBlock = block.number;
   }  
 }

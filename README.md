@@ -34,7 +34,7 @@ The EAT tokens are not transferrable during the crowdsale. Transfers will be ena
 
 ### Token Generation
 
-Tokens are generated as ETH comes in. There is no limit for the total amount of tokens that can be generated during crowdsale. 
+Tokens are generated as ETH comes in. There is limit for the total amount of tokens that can be generated during crowdsale. 
 
 After the crowdsale ends we generate an additional
 	- 10% of the sold tokens for the promotion team

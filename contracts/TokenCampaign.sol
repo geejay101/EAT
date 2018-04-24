@@ -1,8 +1,7 @@
-// This is the code fot the smart contract 
-// used for the EatMeCoin Crowdsale 
+// Smart contract used for the EatMeCoin Crowdsale 
 //
-// @author: Pavel Metelitsyn, Geejay101
-// September 2017
+// @author: Geejay101
+// April 2018
 
 
 pragma solidity ^0.4.15;
@@ -16,7 +15,6 @@ contract eat_token_interface{
   function finalize();
 }
 
-
 // Controlled is implemented in MiniMeToken.sol
 contract TokenCampaign is Controlled {
   using SafeMath for uint256;
@@ -28,26 +26,27 @@ contract TokenCampaign is Controlled {
 
   uint256 public constant scale = (uint256(10) ** decimals);
 
-  uint256 public constant hardcap = 1000000 * scale;
+  uint256 public constant hardcap = 100000000 * scale;
 
   ///////////////////////////////////
   //
   // constants related to token sale
 
-  // after slae ends, additional tokens will be generated
+  // after sale ends, additional tokens will be generated
   // according to the following rules,
   // where 100% correspond to the number of sold tokens
 
-  // percent of reward tokens to be generated for the D-team
-  uint256 public constant PRCT100_D_TEAM = 63; // % * 100
-  uint256 public constant PRCT100_R_TEAM = 250; // % * 100
- 
-  uint256 public constant FIXEDREWARD_MM = 1000; // fixed
-  uint256 public constant FIXEDREWARD_RJDG = 15000; // fixed
+  // percent of reward tokens to be generated
+  uint256 public constant PRCT100_D_TEAM = 63; // % * 100 , 0.63%
+  uint256 public constant PRCT100_R_TEAM = 250; // % * 100 , 2.5%
+  uint256 public constant PRCT100_RJDG = 150;  // % * 100 , 1.5%
+
+  // fixed reward
+  uint256 public constant FIXEDREWARD_MM = 100000 * scale; // fixed
 
   // we keep some of the ETH in the contract until the sale is finalized
   // percent of ETH going to operational account
-  uint256 public constant PRCT100_ETH_OP = 8000;
+  uint256 public constant PRCT100_ETH_OP = 7000; // % * 100 , 70%
 
   // preCrowd structure, Wei
   uint256 public constant preCrowdMinContribution = (10 ether);
@@ -55,46 +54,42 @@ contract TokenCampaign is Controlled {
   // minmal contribution, Wei
   uint256 public constant minContribution = (5 ether) / 100;
 
-  // we want to limit the number of available tokens during the preCrowd stage 
-  // payments during the preCrowd stage will not be accepted after the TokenTreshold is reached or exceeded
-  // we may adjust this number before deployment based on the market conditions
-
-  uint256 public constant preCrowdTokenThreshold = 200000 * scale ; //<--- new 
-  uint256 public constant crowdTokenThreshold = 700000 * scale ; //<--- new 
-
   // how many tokens for one ETH
-  // we may adjust this number before deployment based on the market conditions
-  uint256 public constant preCrowd_stage_tokens_scaled = 71428571428571400000; // 30% discount
-  uint256 public constant stage_1_tokens_scaled =     62500000000000000000; // 20% discount
-  uint256 public constant stage_2_tokens_scaled =     55555555555555600000; // 10% discount
-  uint256 public constant stage_3_tokens_scaled =     50000000000000000000; //<-- scaled
+  uint256 public constant preCrowd_tokens_scaled = 7142857142857140000000; // 30% discount
+  uint256 public constant stage_1_tokens_scaled =  6250000000000000000000; // 20% discount
+  uint256 public constant stage_2_tokens_scaled =  5555555555555560000000; // 10% discount
+  uint256 public constant stage_3_tokens_scaled =  5000000000000000000000; //<-- scaled
 
+  // Tokens allocated for each stage
+  uint256 public constant PreCrowdAllocation =  20000000 * scale ; // Tokens
+  uint256 public constant Stage1Allocation =    15000000 * scale ; // Tokens
+  uint256 public constant Stage2Allocation =    15000000 * scale ; // Tokens
+  uint256 public constant Stage3Allocation =    20000000 * scale ; // Tokens
+
+  // keeps track of tokens allocated, scaled value
+  uint256 public tokensRemainingPreCrowd = PreCrowdAllocation;
+  uint256 public tokensRemainingStage1 = Stage1Allocation;
+  uint256 public tokensRemainingStage2 = Stage2Allocation;
+  uint256 public tokensRemainingStage3 = Stage3Allocation;
 
   // If necessary we can cap the maximum amount 
   // of individual contributions in case contributions have exceeded the hardcap
   // this avoids to cap the contributions already when funds flow in
-  uint256 public maxPreCrowdStageContribution =  200000 * scale ; // Tokens
-  uint256 public maxStage1Contribution =      150000 * scale ; // Tokens
-  uint256 public maxStage2Contribution =      150000 *  scale ; // Tokens
-  uint256 public maxStage3Contribution =      200000 * scale ; // Tokens
+  uint256 public maxPreCrowdAllocationPerInvestor =  20000000 * scale ; // Tokens
+  uint256 public maxStage1AllocationPerInvestor =    15000000 * scale ; // Tokens
+  uint256 public maxStage2AllocationPerInvestor =    15000000 * scale ; // Tokens
+  uint256 public maxStage3AllocationPerInvestor =    20000000 * scale ; // Tokens
 
   // keeps track of tokens generated so far, scaled value
   uint256 public tokensGenerated = 0;
 
-  uint256 public investorCount = 0;
-
-    // keeps track of tokens sold so far, scaled value
-  uint256 public tokensSoldPreCrowd = 0;
-  uint256 public tokensSoldStage1 = 0;
-  uint256 public tokensSoldStage2 = 0;
-  uint256 public tokensSoldStage3 = 0;
+  address[] public joinedCrowdsale;
 
   // total Ether raised (= Ether paid into the contract)
-  uint256 public amountRaised= 0; 
+  uint256 public amountRaised = 0; 
 
   // How much wei we have given back to investors.
   uint256 public amountRefunded = 0;
-
 
 
   ////////////////////////////////////////////////////////
@@ -132,37 +127,46 @@ contract TokenCampaign is Controlled {
   
   // @check ensure that state transitions are 
   // only in one direction
-  // 4 - passive, not accepting funds
-  // 3 - is not used
+  // 3 - passive, not accepting funds
   // 2 - active main sale, accepting funds
   // 1 - closed, not accepting funds 
   // 0 - finalized, not accepting funds
-  uint8 public campaignState = 4; 
+  uint8 public campaignState = 3; 
   bool public paused = false;
 
   // time in seconds since epoch 
   // set to midnight of saturday January 1st, 4000
   uint256 public tCampaignStart = 64060588800;
-  uint256 public tPreCrowdStageEnd = 7 * (1 days);
-  uint256 public t_1st_StageEnd = 15 * (1 days);
-  uint256 public t_2nd_StageEnd = 22* (1 days);
-  uint256 public tCampaignEnd = 38 * (1 days);
+  uint256 public tPreCrowdStageEnd = 7 * (1 days); // preCrowd 7 days open
+  uint256 public t_1st_StageEnd = 3 * (1 days); // Stage1 3 days open
+  uint256 public t_2nd_StageEnd = 2 * (1 days); // Stage2 2 days open
+  uint256 public tCampaignEnd = 35 * (1 days); // Stage3 35 days open
   uint256 public tFinalized = 64060588800;
 
-  /** How much ETH each address has invested to this crowdsale */
-  mapping (address => uint256) public investedAmountOf;
+  // participant data
+  struct ParticipantListData {
 
-  /** How much tokens this crowdsale has credited for each investor address */
-  mapping (address => uint256) public tokenAmountOf;
+    bool participatedFlag;
 
-  address[] public joinedCrowdsales;
-  uint256 public joinedCrowdsalesLen = 0;
+    uint256 contributedAmountPreAllocated;
+    uint256 contributedAmountPreCrowd;
+    uint256 contributedAmountStage1;
+    uint256 contributedAmountStage2;
+    uint256 contributedAmountStage3;
 
-  bool public isWhiteListed = true;
+    uint256 preallocatedTokens;
+    uint256 allocatedTokens;
+
+    uint256 spentAmount;
+  }
+
+  /** participant addresses */
+  mapping (address => ParticipantListData) public participantList;
+
+  bool public isWhiteListed = false;
 
   struct WhiteListData {
     bool status;
-    uint256 minCap;
     uint256 maxCap;
   }
 
@@ -170,40 +174,22 @@ contract TokenCampaign is Controlled {
   mapping (address => WhiteListData) public participantWhitelist;
 
 
-  // participant data
-  struct ParticipantListData {
-    uint256 contributedAmountPreCrowd;
-    uint256 calculatedTokensPreCrowd;
-
-    uint256 contributedAmountStage1;
-    uint256 calculatedTokensStage1;
-
-    uint256 contributedAmountStage2;
-    uint256 calculatedTokensStage2;
-
-    uint256 contributedAmountStage3;
-    uint256 calculatedTokensStage3;
-  }
-
-  /** participant addresses */
-  mapping (address => ParticipantListData) public participantList;
-
   //////////////////////////////////////////////
   //
   // Events
  
-  event CampaignOpen(uint256);
-  event CampaignClosed(uint256);
-  event CampaignPaused(uint256);
-  event CampaignResumed(uint256);
+  event CampaignOpen(uint256 timenow);
+  event CampaignClosed(uint256 timenow);
+  event CampaignPaused(uint256 timenow);
+  event CampaignResumed(uint256 timenow);
 
+  event PreAllocated(address indexed backer, uint256 raised);
+  event RaisedPreCrowd(address indexed backer, uint256 raised);
+  event RaisedStage1(address indexed backer, uint256 raised);
+  event RaisedStage2(address indexed backer, uint256 raised);
+  event RaisedStage3(address indexed backer, uint256 raised);
 
-  event TotalRaisedPreCrowd(address indexed backer, uint256 raised, uint256 amount);
-  event TotalRaisedStage1(address indexed backer, uint256 raised, uint256 amount);
-  event TotalRaisedStage2(address indexed backer, uint256 raised, uint256 amount);
-  event TotalRaisedStage3(address indexed backer, uint256 raised, uint256 amount);
-
-  event Finalized(uint256);
+  event Finalized(uint256 timenow);
 
   event ClaimedTokens(address indexed _token, address indexed _controller, uint256 _amount);
 
@@ -212,9 +198,6 @@ contract TokenCampaign is Controlled {
 
   // Refund was processed for a contributor
   event Refund(address investor, uint256 weiAmount);
-
-  // Address whitelist status changed
-  event Whitelisted(address addr, bool status);
 
   /// @notice Constructor
   /// @param _tokenAddress Our token's address
@@ -246,16 +229,12 @@ contract TokenCampaign is Controlled {
     rteamVaultAddr = _rteamAddress;
     rjdgVaultAddr = _rjdgAddress;
     mmVaultAddr = _mmAddress;
-
     trusteeVaultAddr = _trusteeAddress; 
     opVaultAddr = _opAddress;
     reserveVaultAddr = _reserveAddress;
 
     /// reference our token
     token = eat_token_interface(tokenAddr);
-   
-    // adjust 'constants' for decimals used
-    // decimals = token.decimals(); // should be 18
    
   }
 
@@ -321,35 +300,17 @@ contract TokenCampaign is Controlled {
   }   
 
 
-  function setParticipantWhitelist(address addr, bool status, uint256 minCap, uint256 maxCap) public onlyController {
-    if (!isWhiteListed) revert();
-    participantWhitelist[addr] = WhiteListData({status:status, minCap:minCap, maxCap:maxCap});
+  function setParticipantWhitelist(address addr, bool status, uint256 maxCap) public onlyController {
+    participantWhitelist[addr] = WhiteListData({status:status, maxCap:maxCap});
     Whitelisted(addr, status);
   }
 
-  function setMultipleParticipantWhitelist(address[] addrs, bool[] statuses, uint[] minCaps, uint[] maxCaps) public onlyController {
-    if (!isWhiteListed) revert();
+  function setMultipleParticipantWhitelist(address[] addrs, bool[] statuses, uint[] maxCaps) public onlyController {
     for (uint256 iterator = 0; iterator < addrs.length; iterator++) {
-      setParticipantWhitelist(addrs[iterator], statuses[iterator], minCaps[iterator], maxCaps[iterator]);
+      setParticipantWhitelist(addrs[iterator], statuses[iterator], maxCaps[iterator]);
     }
   }
 
-  function updateParticipantWhitelist(address addr, address contractAddr, uint256 amountBought) internal {
-    if (amountBought < participantWhitelist[addr].minCap) revert();
-    if (!isWhiteListed) revert();
-    if (addr != msg.sender && contractAddr != msg.sender) revert();
-    uint256 newMaxCap = participantWhitelist[addr].maxCap;
-    newMaxCap = newMaxCap.sub(amountBought);
-    participantWhitelist[addr] = WhiteListData({status:participantWhitelist[addr].status, minCap:0, maxCap:newMaxCap});
-  }
-
-  function isBreakingInvestorCap(address addr, uint256 amountBought) constant returns (bool limitBroken) {
-    if (!isWhiteListed) revert();
-    uint256 maxCap = participantWhitelist[addr].maxCap;
-    return (tokenAmountOf[addr].add(amountBought)) > maxCap;
-  }
-
-  
 
   /**
    * Investors can claim refund after finalisation.
@@ -364,99 +325,256 @@ contract TokenCampaign is Controlled {
     weiValue = weiValue.add(participantList[msg.sender].contributedAmountStage1);
     weiValue = weiValue.add(participantList[msg.sender].contributedAmountStage2);
     weiValue = weiValue.add(participantList[msg.sender].contributedAmountStage3);
+    weiValue = weiValue.sub(participantList[msg.sender].spentAmount);
 
-    if (weiValue == 0) revert();
+    if (weiValue <= 0) revert();
+    // send it
+    if (!msg.sender.send(weiValue)) revert();
 
-    participantList[msg.sender] = WhiteListData({
-      contributedAmountPreCrowd: 0,
-      calculatedTokensPreCrowd: 0,
-
-      contributedAmountStage1: 0,
-      calculatedTokensStage1: 0,
-
-      contributedAmountStage2: 0,
-      calculatedTokensStage2: 0,
-
-      contributedAmountStage3: 0,
-      calculatedTokensStage3: 0
-    });
+    participantList[msg.sender].contributedAmountPreCrowd = 0;
+    participantList[msg.sender].contributedAmountStage1 = 0;
+    participantList[msg.sender].contributedAmountStage2 = 0;
+    participantList[msg.sender].contributedAmountStage3 = 0;
 
     amountRefunded = amountRefunded.add(weiValue);
 
     // announce to world
     Refund(msg.sender, weiValue);
- 
-    // send it
-    if (!msg.sender.send(weiValue)) revert();
+
   }
 
   /// @notice Finalizes the campaign
   ///   Get funds out, generates team, reserve and reserve tokens
   function finalizeCampaign() public onlyController {     
       
-      /// only if sale was closed or 48 hours = 2880 minutes have passed since campaign end
-      /// we leave this time to complete possibly pending orders from offchain contributions 
-      
-      require ( (campaignState == 1) ||
-                ((campaignState != 0) && (now > tCampaignEnd + (2880 minutes))));
-      
-      campaignState = 0;
+    /// only if sale was closed or 48 hours = 2880 minutes have passed since campaign end
+    /// we leave this time to complete possibly pending orders from offchain contributions 
 
-      // forward funds to the trustee 
-      // since we forward a fraction of the incomming ether on every contribution
-      // 'amountRaised' IS NOT equal to the contract's balance
-      // we use 'this.balance' instead
+    require ( (campaignState == 1) || ((campaignState != 0) && (now > tCampaignEnd + (2880 minutes))));
 
-      // trusteeVaultAddr.transfer(this.balance);
+    campaignState = 0;
 
-      // 
-      if (isWhiteListed) {
-        uint256 num = 0;
-        for (var i = 0; i < joinedCrowdsalesLen; i++) {
-          if (this == joinedCrowdsales[i]) 
-            num = i;
+    uint256 nTokens = 0;
+    uint256 rate = 0;
+    uint256 contributedAmount = 0; 
+
+    for (uint256 i = 0; i < joinedCrowdsale.length; i++) {
+
+        address investorAddress = joinedCrowdsale[i];
+
+        // PreCrowd stage
+        contributedAmount = participantList[investorAddress].contributedAmountPreCrowd;
+
+        if (isWhiteListed) {
+
+            // is contributeAmount within whitelisted amount
+            if (contributedAmount > participantWhitelist[investorAddress].maxCap) {
+                contributedAmount = participantWhitelist[investorAddress].maxCap;
+            }
+
+            // calculate remaining whitelisted amount
+            if (contributedAmount>0) {
+                participantWhitelist[investorAddress].maxCap = participantWhitelist[investorAddress].maxCap.sub(contributedAmount);
+            }
+
         }
 
-        if (num + 1 < joinedCrowdsalesLen) {
-          for (var j = num + 1; j < joinedCrowdsalesLen; j++) {
-            CrowdsaleExt crowdsale = CrowdsaleExt(joinedCrowdsales[j]);
-            crowdsale.updateParticipantWhitelist(msg.sender, this, tokenAmount);
-          }
+        if (contributedAmount>0) {
+
+            // calculate the number of tokens
+            rate = preCrowd_tokens_scaled;
+            nTokens = (rate.mul(contributedAmount)).div(1 ether);
+
+            // check whether individual allocations are capped
+            if (nTokens > maxPreCrowdAllocationPerInvestor) {
+              nTokens = maxPreCrowdAllocationPerInvestor;
+            }
+
+            // If tokens are bigger than whats left in the stage, give the rest 
+            if (tokensRemainingPreCrowd.sub(nTokens) < 0) {
+                nTokens = tokensRemainingPreCrowd;
+            }
+
+            // update spent amount
+            participantList[joinedCrowdsale[i]].spentAmount = participantList[joinedCrowdsale[i]].spentAmount.add(nTokens.div(rate).mul(1 ether));
+
+            // calculate leftover tokens for the stage 
+            tokensRemainingPreCrowd = tokensRemainingPreCrowd.sub(nTokens);
+
+            // update the new token holding
+            participantList[investorAddress].allocatedTokens = participantList[investorAddress].allocatedTokens.add(nTokens);
+
         }
-      }
 
+        //  stage1
+        contributedAmount = participantList[investorAddress].contributedAmountStage1;
 
-      // generate reserve tokens 
-      // uint256 reserveTokens = rest of tokens under hardcap
-      uint256 reserveTokens = hardcap.sub(tokensGenerated);
-      assert( do_grant_tokens(reserveVaultAddr, reserveTokens) );
+        if (isWhiteListed) {
 
-      // dteam tokens
-      uint256 dteamTokens = (tokensGenerated.mul(PRCT100_D_TEAM)).div(10000);
-      assert( do_grant_tokens(dteamVaultAddr1, dteamTokens) );
-      assert( do_grant_tokens(dteamVaultAddr2, dteamTokens) );
-      assert( do_grant_tokens(dteamVaultAddr3, dteamTokens) );
-      assert( do_grant_tokens(dteamVaultAddr4, dteamTokens) );     
+            // is contributeAmount within whitelisted amount
+            if (contributedAmount > participantWhitelist[investorAddress].maxCap) {
+                contributedAmount = participantWhitelist[investorAddress].maxCap;
+            }
 
-      // rteam tokens
-      uint256 rteamTokens = (tokensGenerated.mul(PRCT100_R_TEAM)).div(10000);
-      assert( do_grant_tokens(rteamVaultAddr, rteamTokens) );
-      
-      // rjdg tokens
-      assert( do_grant_tokens(rjdgVaultAddr, FIXEDREWARD_RJDG) );
+            // calculate remaining whitelisted amount
+            if (contributedAmount>0) {
+                participantWhitelist[investorAddress].maxCap = participantWhitelist[investorAddress].maxCap.sub(contributedAmount);
+            }
 
-      // mm tokens
-      assert( do_grant_tokens(mmVaultAddr, FIXEDREWARD_MM) );
+        }
 
+        if (contributedAmount>0) {
 
-      // prevent further token generation
-      token.finalize();
+            // calculate the number of tokens
+            rate = stage_1_tokens_scaled;
+            nTokens = (rate.mul(contributedAmount)).div(1 ether);
 
-      tFinalized = now;
-      
-      // notify the world
-      Finalized(tFinalized);
-   }
+            // check whether individual allocations are capped
+            if (nTokens > maxStage1AllocationPerInvestor) {
+              nTokens = maxStage1AllocationPerInvestor;
+            }
+
+            // If tokens are bigger than whats left in the stage, give the rest 
+            if (tokensRemainingStage1.sub(nTokens) < 0) {
+                nTokens = tokensRemainingStage1;
+            }
+
+            // update spent amount
+            participantList[joinedCrowdsale[i]].spentAmount = participantList[joinedCrowdsale[i]].spentAmount.add(nTokens.div(rate).mul(1 ether));
+
+            // calculate leftover tokens for the stage 
+            tokensRemainingStage1 = tokensRemainingStage1.sub(nTokens);
+
+            // update the new token holding
+            participantList[investorAddress].allocatedTokens = participantList[investorAddress].allocatedTokens.add(nTokens);
+
+        }
+
+        //  stage2
+        contributedAmount = participantList[investorAddress].contributedAmountStage2;
+
+        if (isWhiteListed) {
+
+            // is contributeAmount within whitelisted amount
+            if (contributedAmount > participantWhitelist[investorAddress].maxCap) {
+                contributedAmount = participantWhitelist[investorAddress].maxCap;
+            }
+
+            // calculate remaining whitelisted amount
+            if (contributedAmount>0) {
+                participantWhitelist[investorAddress].maxCap = participantWhitelist[investorAddress].maxCap.sub(contributedAmount);
+            }
+
+        }
+
+        if (contributedAmount>0) {
+
+            // calculate the number of tokens
+            rate = stage_2_tokens_scaled;
+            nTokens = (rate.mul(contributedAmount)).div(1 ether);
+
+            // check whether individual allocations are capped
+            if (nTokens > maxStage2AllocationPerInvestor) {
+              nTokens = maxStage2AllocationPerInvestor;
+            }
+
+            // If tokens are bigger than whats left in the stage, give the rest 
+            if (tokensRemainingStage2.sub(nTokens) < 0) {
+                nTokens = tokensRemainingStage2;
+            }
+
+            // update spent amount
+            participantList[joinedCrowdsale[i]].spentAmount = participantList[joinedCrowdsale[i]].spentAmount.add(nTokens.div(rate).mul(1 ether));
+
+            // calculate leftover tokens for the stage 
+            tokensRemainingStage2 = tokensRemainingStage2.sub(nTokens);
+
+            // update the new token holding
+            participantList[investorAddress].allocatedTokens = participantList[investorAddress].allocatedTokens.add(nTokens);
+
+        }
+
+        //  stage3
+        contributedAmount = participantList[investorAddress].contributedAmountStage3;
+
+        if (isWhiteListed) {
+
+            // is contributeAmount within whitelisted amount
+            if (contributedAmount > participantWhitelist[investorAddress].maxCap) {
+                contributedAmount = participantWhitelist[investorAddress].maxCap;
+            }
+
+            // calculate remaining whitelisted amount
+            if (contributedAmount>0) {
+                participantWhitelist[investorAddress].maxCap = participantWhitelist[investorAddress].maxCap.sub(contributedAmount);
+            }
+
+        }
+
+        if (contributedAmount>0) {
+
+            // calculate the number of tokens
+            rate = stage_3_tokens_scaled;
+            nTokens = (rate.mul(contributedAmount)).div(1 ether);
+
+            // check whether individual allocations are capped
+            if (nTokens > maxStage3AllocationPerInvestor) {
+              nTokens = maxStage3AllocationPerInvestor;
+            }
+
+            // If tokens are bigger than whats left in the stage, give the rest 
+            if (tokensRemainingStage3.sub(nTokens) < 0) {
+                nTokens = tokensRemainingStage3;
+            }
+
+            // update spent amount
+            participantList[joinedCrowdsale[i]].spentAmount = participantList[joinedCrowdsale[i]].spentAmount.add(nTokens.div(rate).mul(1 ether));
+
+            // calculate leftover tokens for the stage 
+            tokensRemainingStage3 = tokensRemainingStage3.sub(nTokens);
+
+            // update the new token holding
+            participantList[investorAddress].allocatedTokens = participantList[investorAddress].allocatedTokens.add(nTokens);
+
+        }
+
+        do_grant_tokens(investorAddress, participantList[investorAddress].allocatedTokens);
+
+    }
+
+    // dteam tokens
+    uint256 drewardTokens = (tokensGenerated.mul(PRCT100_D_TEAM)).div(10000);
+
+    // rteam tokens
+    uint256 rrewardTokens = (tokensGenerated.mul(PRCT100_R_TEAM)).div(10000);
+
+    // rjdg tokens
+    uint256 rjdgrewardTokens = (tokensGenerated.mul(PRCT100_RJDG)).div(10000);
+
+    // mm tokens
+    uint256 mmrewardTokens = FIXEDREWARD_MM;
+
+    do_grant_tokens(dteamVaultAddr1, drewardTokens);
+    do_grant_tokens(dteamVaultAddr2, drewardTokens);
+    do_grant_tokens(dteamVaultAddr3, drewardTokens);
+    do_grant_tokens(dteamVaultAddr4, drewardTokens);     
+    do_grant_tokens(rteamVaultAddr, rrewardTokens);
+    do_grant_tokens(rjdgVaultAddr, rjdgrewardTokens);
+    do_grant_tokens(mmVaultAddr, mmrewardTokens);
+
+    // generate reserve tokens 
+    // uint256 reserveTokens = rest of tokens under hardcap
+    uint256 reserveTokens = hardcap.sub(tokensGenerated);
+    do_grant_tokens(reserveVaultAddr, reserveTokens);
+
+    // prevent further token generation
+    token.finalize();
+
+    tFinalized = now;
+    
+    // notify the world
+    Finalized(tFinalized);
+  }
 
 
   ///   Get funds out
@@ -490,108 +608,11 @@ contract TokenCampaign is Controlled {
   }
 
 
-
-function investInternal(address receiver, uint128 customerId)  private {
-
-    // Determine if it's a good time to accept investment from this participant
-    if(getState() == State.PreFunding) {
-      // Are we whitelisted for early deposit
-      revert();
-    } else if(getState() == State.Funding) {
-      // Retail participants can only come in when the crowdsale is running
-      // pass
-      if(isWhiteListed) {
-        if(!participantWhitelist[receiver].status) {
-          revert();
-        }
-      }
-    } else {
-      // Unwanted state
-      revert();
-    }
-
-    uint256 weiAmount = msg.value;
-
-    // Account presale sales separately, so that they do not count against pricing tranches
-    uint256 tokenAmount = pricingStrategy.calculatePrice(weiAmount, weiRaised - presaleWeiRaised, tokensSold, msg.sender, token.decimals());
-
-    if(tokenAmount == 0) {
-      // Dust transaction
-      revert();
-    }
-
-    if(isWhiteListed) {
-      if(tokenAmount < participantWhitelist[receiver].minCap && tokenAmountOf[receiver] == 0) {
-        // tokenAmount < minCap for investor
-        revert();
-      }
-      if(tokenAmount > participantWhitelist[receiver].maxCap) {
-        // tokenAmount > maxCap for investor
-        revert();
-      }
-
-      // Check that we did not bust the investor's cap
-      if (isBreakingInvestorCap(receiver, tokenAmount)) {
-        revert();
-      }
-    } else {
-      if(tokenAmount < token.minCap() && tokenAmountOf[receiver] == 0) {
-        revert();
-      }
-    }
-
-    if(investedAmountOf[receiver] == 0) {
-       // A new investor
-       investorCount++;
-    }
-
-    // Update investor
-    investedAmountOf[receiver] = investedAmountOf[receiver].add(weiAmount);
-    tokenAmountOf[receiver] = tokenAmountOf[receiver].add(tokenAmount);
-
-    // Update totals
-    weiRaised = weiRaised.add(weiAmount);
-    tokensSold = tokensSold.add(tokenAmount);
-
-    if(pricingStrategy.isPresalePurchase(receiver)) {
-        presaleWeiRaised = presaleWeiRaised.add(weiAmount);
-    }
-
-    // Check that we did not bust the cap
-    if(isBreakingCap(weiAmount, tokenAmount, weiRaised, tokensSold)) {
-      revert();
-    }
-
-    assignTokens(receiver, tokenAmount);
-
-    // Pocket the money
-    if(!multisigWallet.send(weiAmount)) revert();
-
-    if (isWhiteListed) {
-      uint256 num = 0;
-      for (var i = 0; i < joinedCrowdsalesLen; i++) {
-        if (this == joinedCrowdsales[i]) 
-          num = i;
-      }
-
-      if (num + 1 < joinedCrowdsalesLen) {
-        for (var j = num + 1; j < joinedCrowdsalesLen; j++) {
-          CrowdsaleExt crowdsale = CrowdsaleExt(joinedCrowdsales[j]);
-          crowdsale.updateEarlyParicipantWhitelist(msg.sender, this, tokenAmount);
-        }
-      }
-    }
-
-  }
-
-
-
-
   ///  @notice processes the contribution
   ///   checks campaign state, time window and minimal contribution
   ///   throws if one of the conditions fails
   function process_contribution(address _toAddr) internal {
-    
+
     require ((campaignState == 2)   // active main sale
          && (now <= tCampaignEnd)   // within time window
          && (paused == false));     // not on hold
@@ -600,73 +621,46 @@ function investInternal(address receiver, uint128 customerId)  private {
     // though our token has decimals we don't want nanocontributions
     require ( msg.value >= minContribution );
 
-    uint256 nTokens = 0;
-    uint256 rate = 0;
-
     amountRaised = amountRaised.add(msg.value);
+
+    // check whether we know this investor, if not add him to list
+    if (!participantList[_toAddr].participatedFlag) {
+
+       // A new investor
+       participantList[_toAddr].participatedFlag = true;
+       joinedCrowdsale.push(_toAddr);
+    }
 
     if (now <= tPreCrowdStageEnd) {
 
       // during the preCrowd stage we require a minimal eth contribution 
-      if ( msg.value < preCrowdMinContribution )
-      {
-        revert();
-      }
+      require ( msg.value >= preCrowdMinContribution );
 
       participantList[_toAddr].contributedAmountPreCrowd = participantList[_toAddr].contributedAmountPreCrowd.add(msg.value);
-
-      rate = preCrowd_stage_tokens_scaled;
-      nTokens = (rate.mul(msg.value)).div(1 ether);
-      participantList[_toAddr].calculatedTokensPreCrowd = participantList[_toAddr].calculatedTokensPreCrowd.add(nTokens);
-
-      // Update totals
-      tokensSoldPreCrowd = tokensSoldPreCrowd.add(nTokens);
       
       // notify the world
-      TotalRaisedPreCrowd(_toAddr, amountRaised, tokensSoldPreCrowd);
-
+      RaisedPreCrowd(_toAddr, msg.value);
 
     } else if (now <= t_1st_StageEnd) {
 
       participantList[_toAddr].contributedAmountStage1 = participantList[_toAddr].contributedAmountStage1.add(msg.value);
 
-      rate = stage_1_tokens_scaled;
-      nTokens = (rate.mul(msg.value)).div(1 ether);
-      participantList[_toAddr].calculatedTokensStage1 = participantList[_toAddr].calculatedTokensStage1.add(nTokens);
-
-      // Update totals
-      tokensSoldStage1 = tokensSoldStage1.add(nTokens);
-      
       // notify the world
-      TotalRaisedStage1(_toAddr, amountRaised, tokensSoldStage1);
+      RaisedStage1(_toAddr, msg.value);
 
     } else if (now <= t_2nd_StageEnd) {
 
       participantList[_toAddr].contributedAmountStage2 = participantList[_toAddr].contributedAmountStage2.add(msg.value);
 
-      rate = stage_2_tokens_scaled;
-      nTokens = (rate.mul(msg.value)).div(1 ether);
-      participantList[_toAddr].calculatedTokensStage2 = participantList[_toAddr].calculatedTokensStage2.add(nTokens);
-
-      // Update totals
-      tokensSoldStage2 = tokensSoldStage2.add(nTokens);
-      
       // notify the world
-      TotalRaisedStage2(_toAddr, amountRaised, tokensSoldStage2);
+      RaisedStage2(_toAddr, msg.value);
 
     } else {
 
       participantList[_toAddr].contributedAmountStage3 = participantList[_toAddr].contributedAmountStage3.add(msg.value);
-
-      rate = stage_3_tokens_scaled;
-      nTokens = (rate.mul(msg.value)).div(1 ether);
-      participantList[_toAddr].calculatedTokensStage3 = participantList[_toAddr].calculatedTokensStage3.add(nTokens);
-
-      // Update totals
-      tokensSoldStage3 = tokensSoldStage3.add(nTokens);
       
       // notify the world
-      TotalRaisedStage3(_toAddr, amountRaised, tokensSoldStage3);
+      RaisedStage3(_toAddr, msg.value);
 
     }
 
@@ -676,42 +670,114 @@ function investInternal(address receiver, uint128 customerId)  private {
     // transfer to op account 
     opVaultAddr.transfer(opEth);
 
-    if(investedAmountOf[_toAddr] == 0) {
-       // A new investor
-       investorCount++;
-    }
-
   }
 
   /**
-   * Preallocate tokens for the early investors.
-   *
-   * Preallocated tokens have been sold before the actual crowdsale opens.
-   * This function mints the tokens and moves the crowdsale needle.
-   *
-   * Investor count is not handled; it is assumed this goes for multiple investors
-   * and the token distribution happens outside the smart contract flow.
-   *
-   * No money is exchanged, as the crowdsale team already have received the payment.
-   *
-   * @param fullTokens tokens as full tokens - decimal places added internally
-   * @param weiPrice Price of a single full token in wei
-   *
-   */
-  function preallocate(address receiver, uint fullTokens, uint weiPrice) public onlyController {
+  * Preallocated tokens have been sold or given in airdrop before the actual crowdsale opens. 
+  * This function mints the tokens and moves the crowdsale needle.
+  *
+  * Must be whitelisted manually before as tokens are granted immediately
+  *
+  * No money is exchanged, as the crowdsale team already have received the payment.
+  *
+  * @param fullTokens tokens as full tokens - decimal places added internally
+  * @param weiPrice Price of a single full token in wei
+  *
+  */
+  function preallocate(address _toAddr, uint fullTokens, uint weiPrice) public onlyController {
 
     uint tokenAmount = fullTokens * 10**scale;
     uint weiAmount = weiPrice * fullTokens; // This can be also 0, we give out tokens for free
 
-    investedAmountOf[receiver] = investedAmountOf[receiver].add(weiAmount);
-    tokenAmountOf[receiver] = tokenAmountOf[receiver].add(tokenAmount);
+    if (!participantList[_toAddr].participatedFlag) {
+
+       // A new investor
+       participantList[_toAddr].participatedFlag = true;
+       joinedCrowdsale.push(_toAddr);
+
+    }
+
+    participantList[_toAddr].contributedAmountPreAllocated = participantList[_toAddr].contributedAmountPreAllocated.add(weiAmount);
+    participantList[_toAddr].preallocatedTokens = participantList[_toAddr].preallocatedTokens.add(tokenAmount);
+
+    amountRaised = amountRaised.add(msg.value);
 
     // side effect: do_grant_tokens updates the "tokensGenerated" variable
-    require( do_grant_tokens(receiver, tokenAmount) );
+    require( do_grant_tokens(_toAddr, tokenAmount) );
 
     // notify the world
-    Allocated(receiver, weiAmount, tokenAmount);
+    PreAllocated(_toAddr, weiAmount);
 
+  }
+
+  // set individual preCrowd cap
+  function setMaxPreCrowdAllocationPerInvestor(uint256 _cap) public onlyController {
+      maxPreCrowdAllocationPerInvestor = _cap;
+  }
+
+  // set individual stage1Crowd cap
+  function setMaxStage1AllocationPerInvestor(uint256 _cap) public onlyController {
+      maxStage1AllocationPerInvestor = _cap;
+  }
+
+  // set individual stage2Crowd cap
+  function setMaxStage2AllocationPerInvestor(uint256 _cap) public onlyController {
+      maxStage2AllocationPerInvestor = _cap;
+  }
+
+  // set individual stage3Crowd cap
+  function setMaxStage3AllocationPerInvestor(uint256 _cap) public onlyController {
+      maxStage3AllocationPerInvestor = _cap;
+  }
+
+  function setdteamVaultAddr1(address _newAddr) public onlyController {
+    require( _newAddr != 0x0 );
+    dteamVaultAddr1 = _newAddr;
+  }
+
+  function setdteamVaultAddr2(address _newAddr) public onlyController {
+    require( _newAddr != 0x0 );
+    dteamVaultAddr2 = _newAddr;
+  }
+
+  function setdteamVaultAddr3(address _newAddr) public onlyController {
+    require( _newAddr != 0x0 );
+    dteamVaultAddr3 = _newAddr;
+  }
+
+  function setdteamVaultAddr4(address _newAddr) public onlyController {
+    require( _newAddr != 0x0 );
+    dteamVaultAddr4 = _newAddr;
+  }
+
+  function setrteamVaultAddr(address _newAddr) public onlyController {
+    require( _newAddr != 0x0 );
+    rteamVaultAddr = _newAddr;
+  }
+
+  function setrjdgVaultAddr(address _newAddr) public onlyController {
+    require( _newAddr != 0x0 );
+    rjdgVaultAddr = _newAddr;
+  }
+
+  function setmmVaultAddr(address _newAddr) public onlyController {
+    require( _newAddr != 0x0 );
+    mmVaultAddr = _newAddr;
+  }
+
+  function setreserveVaultAddr(address _newAddr) public onlyController {
+    require( _newAddr != 0x0 );
+    reserveVaultAddr = _newAddr;
+  }
+
+  function settrusteeVaultAddr(address _newAddr) public onlyController {
+    require( _newAddr != 0x0 );
+    trusteeVaultAddr = _newAddr;
+  }
+
+  function setopVaultAddr(address _newAddr) public onlyController {
+    require( _newAddr != 0x0 );
+    opVaultAddr = _newAddr;
   }
 
   /// @notice This function handles receiving Ether in favor of a third party address
@@ -729,13 +795,7 @@ function investInternal(address receiver, uint128 customerId)  private {
     process_contribution(msg.sender);  
   }
 
-  //////////
-  // Safety Methods
-  //////////
-
-  /* inspired by MiniMeToken.sol */
-
-  /// @notice This method can be used by the controller to extract mistakenly
+  /// This method can be used by the controller to extract mistakenly
   ///  sent tokens to this contract.
   function claimTokens(address _tokenAddr) public onlyController {
 
