@@ -32,8 +32,6 @@ The EAT tokens are not transferrable during the crowdsale. Transfers will be ena
 
 Preallocated tokens for advertisers are generated immediately and cannot be transferred until the crowdsale ends. Sold and airdropped Tokens are generated at the end of the crowdsale. 
 
-After the crowdsale ends we generate also reward tokens
-	- 15% of the sold tokens for the promotion team
+After the crowdsale ends we generate also reward tokens. 15% of the sold tokens are a reward for the promotion team
 
-There hardcap is 100m Tokens that can be generated during the crowdsale. Whatever tokens are left after the sale and reward tokens have been issued are kept as a reserve. After all tokens are generated the token is finalized i.e. generation is irreversibly disabled by the crowdsale contract.
-
+There hardcap is 100m Tokens that can be generated during the crowdsale. Whatever tokens are left after the sold and reward tokens have been issued are kept as a reserve. After all tokens are generated the token is finalized i.e. generation is irreversibly disabled by the crowdsale contract.

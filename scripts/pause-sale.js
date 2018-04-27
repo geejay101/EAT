@@ -13,19 +13,16 @@ var stateNames = ["finalized, not accepting funds",
 module.exports = function(callback){
 	var campaign;
 
-	TokenCampaign.deployed().then(
-		function(instance){
+	TokenCampaign.deployed().then(function(instance){
 			console.log(colors.red("# Campaign at " + instance.address))
 			console.log(colors.red("pause sale"))
 			campaign = instance;
-			return campaign.pauseSale()})
-		.then(
-			function(returnCode){
-				
-				console.log(" return code: " + returnCode );
-
-			});  		
-} 	
-
-
+			return campaign.pauseSale()
+		})
+		.then(function(returnCode) {
+				console.log(colors.green(" Success: " + returnCode ));
+		}).catch(function(e) {
+				console.log(colors.red(" Error: " + returnCode ));
+		}); 
+}
 

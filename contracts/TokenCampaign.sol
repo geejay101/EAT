@@ -4,9 +4,10 @@
 // April 2018
 
 
-pragma solidity ^0.4.15;
+pragma solidity ^0.4.18;
 
 import "./library.sol";
+import "./MiniMeToken.sol";
 import "./EatMeCoin.sol";
 
 contract eat_token_interface{
@@ -39,20 +40,20 @@ contract TokenCampaign is Controlled {
   // percent of reward tokens to be generated
   uint256 public constant PRCT100_D_TEAM = 63; // % * 100 , 0.63%
   uint256 public constant PRCT100_R_TEAM = 250; // % * 100 , 2.5%
-  uint256 public constant PRCT100_RJDG = 150;  // % * 100 , 1.5%
+  uint256 public constant PRCT100_R2 = 150;  // % * 100 , 1.5%
 
   // fixed reward
   uint256 public constant FIXEDREWARD_MM = 100000 * scale; // fixed
 
   // we keep some of the ETH in the contract until the sale is finalized
-  // percent of ETH going to operational account
-  uint256 public constant PRCT100_ETH_OP = 7000; // % * 100 , 70%
+  // percent of ETH going to operational and reserve account
+  uint256 public constant PRCT100_ETH_OP = 4000; // % * 100 , 2x 40%
 
   // preCrowd structure, Wei
   uint256 public constant preCrowdMinContribution = (20 ether);
 
   // minmal contribution, Wei
-  uint256 public constant minContribution = (5 ether) / 100;
+  uint256 public constant minContribution = (1 ether) / 100;
 
   // how many tokens for one ETH
   uint256 public constant preCrowd_tokens_scaled = 7142857142857140000000; // 30% discount
@@ -108,7 +109,7 @@ contract TokenCampaign is Controlled {
   address public rteamVaultAddr;
 
   // advisor address
-  address public rjdgVaultAddr;
+  address public r2VaultAddr;
 
   // adivisor address
   address public mmVaultAddr;
@@ -137,9 +138,19 @@ contract TokenCampaign is Controlled {
   // time in seconds since epoch 
   // set to midnight of saturday January 1st, 4000
   uint256 public tCampaignStart = 64060588800;
+
   uint256 public t_1st_StageEnd = 3 * (1 days); // Stage1 3 days open
+  // for testing
+  // uint256 public t_1st_StageEnd = 3 * (1 hours); // Stage1 3 days open
+
   uint256 public t_2nd_StageEnd = 2 * (1 days); // Stage2 2 days open
+  // for testing
+  // uint256 public t_2nd_StageEnd = 2 * (1 hours); // Stage2 2 days open
+
   uint256 public tCampaignEnd = 35 * (1 days); // Stage3 35 days open
+  // for testing
+  // uint256 public tCampaignEnd = 35 * (1 hours); // Stage3 35 days open
+
   uint256 public tFinalized = 64060588800;
 
   // participant data
@@ -161,6 +172,9 @@ contract TokenCampaign is Controlled {
 
   /** participant addresses */
   mapping (address => ParticipantListData) public participantList;
+
+  uint256 public investorsProcessed = 0;
+  uint256 public investorsBatchSize = 100;
 
   bool public isWhiteListed = true;
 
@@ -189,7 +203,6 @@ contract TokenCampaign is Controlled {
   event RaisedStage3(address indexed backer, uint256 raised);
   event Airdropped(address indexed backer, uint256 tokensairdropped);
 
-
   event Finalized(uint256 timenow);
 
   event ClaimedTokens(address indexed _token, address indexed _controller, uint256 _amount);
@@ -212,7 +225,7 @@ contract TokenCampaign is Controlled {
     address _dteamAddress3,
     address _dteamAddress4,
     address _rteamAddress,
-    address _rjdgAddress,
+    address _r2Address,
     address _mmAddress,
     address _trusteeAddress,
     address _opAddress,
@@ -228,7 +241,7 @@ contract TokenCampaign is Controlled {
     dteamVaultAddr3 = _dteamAddress3;
     dteamVaultAddr4 = _dteamAddress4;
     rteamVaultAddr = _rteamAddress;
-    rjdgVaultAddr = _rjdgAddress;
+    r2VaultAddr = _r2Address;
     mmVaultAddr = _mmAddress;
     trusteeVaultAddr = _trusteeAddress; 
     opVaultAddr = _opAddress;
@@ -311,6 +324,13 @@ contract TokenCampaign is Controlled {
     }
   }
 
+  function investorCount() public constant returns (uint256) {
+    return joinedCrowdsale.length;
+  }
+
+  function contractBalance() public constant returns (uint256) {
+    return this.balance;
+  }
 
   /**
    * Investors can claim refund after finalisation.
@@ -328,8 +348,6 @@ contract TokenCampaign is Controlled {
     weiValue = weiValue.sub(participantList[msg.sender].spentAmount);
 
     if (weiValue <= 0) revert();
-    // send it
-    if (!msg.sender.send(weiValue)) revert();
 
     participantList[msg.sender].contributedAmountPreCrowd = 0;
     participantList[msg.sender].contributedAmountStage1 = 0;
@@ -338,6 +356,9 @@ contract TokenCampaign is Controlled {
 
     amountRefunded = amountRefunded.add(weiValue);
 
+    // send it
+    if (!msg.sender.send(weiValue)) revert();
+
     // announce to world
     Refund(msg.sender, weiValue);
 
@@ -345,20 +366,26 @@ contract TokenCampaign is Controlled {
 
   /// @notice Finalizes the campaign
   ///   Get funds out, generates team, reserve and reserve tokens
-  function finalizeCampaign() public onlyController {     
+  function allocateInvestors() public onlyController {     
       
     /// only if sale was closed or 48 hours = 2880 minutes have passed since campaign end
     /// we leave this time to complete possibly pending orders from offchain contributions 
 
     require ( (campaignState == 1) || ((campaignState != 0) && (now > tCampaignEnd + (2880 minutes))));
 
-    campaignState = 0;
-
     uint256 nTokens = 0;
     uint256 rate = 0;
     uint256 contributedAmount = 0; 
 
-    for (uint256 i = 0; i < joinedCrowdsale.length; i++) {
+    uint256 investorsProcessedEnd = investorsProcessed + investorsBatchSize;
+
+    if (investorsProcessedEnd > joinedCrowdsale.length) {
+      investorsProcessedEnd = joinedCrowdsale.length;
+    }
+
+    for (uint256 i = investorsProcessed; i < investorsProcessedEnd; i++) {
+
+        investorsProcessed++;
 
         address investorAddress = joinedCrowdsale[i];
 
@@ -542,14 +569,27 @@ contract TokenCampaign is Controlled {
 
     }
 
+  }
+
+  /// @notice Finalizes the campaign
+  ///   Get funds out, generates team, reserve and reserve tokens
+  function finalizeCampaign() public onlyController {     
+      
+    /// only if sale was closed or 48 hours = 2880 minutes have passed since campaign end
+    /// we leave this time to complete possibly pending orders from offchain contributions 
+
+    require ( (campaignState == 1) || ((campaignState != 0) && (now > tCampaignEnd + (2880 minutes))));
+
+    campaignState = 0;
+
     // dteam tokens
     uint256 drewardTokens = (tokensGenerated.mul(PRCT100_D_TEAM)).div(10000);
 
     // rteam tokens
     uint256 rrewardTokens = (tokensGenerated.mul(PRCT100_R_TEAM)).div(10000);
 
-    // rjdg tokens
-    uint256 rjdgrewardTokens = (tokensGenerated.mul(PRCT100_RJDG)).div(10000);
+    // r2 tokens
+    uint256 r2rewardTokens = (tokensGenerated.mul(PRCT100_R2)).div(10000);
 
     // mm tokens
     uint256 mmrewardTokens = FIXEDREWARD_MM;
@@ -559,7 +599,7 @@ contract TokenCampaign is Controlled {
     do_grant_tokens(dteamVaultAddr3, drewardTokens);
     do_grant_tokens(dteamVaultAddr4, drewardTokens);     
     do_grant_tokens(rteamVaultAddr, rrewardTokens);
-    do_grant_tokens(rjdgVaultAddr, rjdgrewardTokens);
+    do_grant_tokens(r2VaultAddr, r2rewardTokens);
     do_grant_tokens(mmVaultAddr, mmrewardTokens);
 
     // generate reserve tokens 
@@ -591,7 +631,17 @@ contract TokenCampaign is Controlled {
 
       trusteeVaultAddr.transfer(this.balance);
 
-   }
+  }
+
+     ///   Get funds out
+  function emergencyFinalize() public onlyController {     
+
+    campaignState = 0;
+
+    // prevent further token generation
+    token.finalize();
+
+  }
 
 
   /// @notice triggers token generaton for the recipient
@@ -671,24 +721,22 @@ contract TokenCampaign is Controlled {
     // transfer to op account 
     opVaultAddr.transfer(opEth);
 
+    // transfer to reserve account 
+    reserveVaultAddr.transfer(opEth);
+
   }
 
   /**
   * Preallocated tokens have been sold or given in airdrop before the actual crowdsale opens. 
   * This function mints the tokens and moves the crowdsale needle.
   *
-  * Must be whitelisted manually before as tokens are granted immediately
-  *
-  * No money is exchanged, as the crowdsale team already have received the payment.
-  *
-  * @param fullTokens tokens as full tokens - decimal places added internally
-  * @param weiPrice Price of a single full token in wei
-  *
   */
-  function preallocate(address _toAddr, uint fullTokens, uint weiPrice) public onlyController {
+  function preallocate(address _toAddr, uint fullTokens, uint weiPaid) public onlyController {
 
-    uint tokenAmount = fullTokens * 10**scale;
-    uint weiAmount = weiPrice * fullTokens; // This can be also 0, we give out tokens for free
+    require (campaignState != 0);
+
+    uint tokenAmount = fullTokens * scale;
+    uint weiAmount = weiPaid ; // This can be also 0, we give out tokens for free
 
     if (!participantList[_toAddr].participatedFlag) {
 
@@ -701,7 +749,7 @@ contract TokenCampaign is Controlled {
     participantList[_toAddr].contributedAmountPreAllocated = participantList[_toAddr].contributedAmountPreAllocated.add(weiAmount);
     participantList[_toAddr].preallocatedTokens = participantList[_toAddr].preallocatedTokens.add(tokenAmount);
 
-    amountRaised = amountRaised.add(msg.value);
+    amountRaised = amountRaised.add(weiAmount);
 
     // side effect: do_grant_tokens updates the "tokensGenerated" variable
     require( do_grant_tokens(_toAddr, tokenAmount) );
@@ -713,7 +761,9 @@ contract TokenCampaign is Controlled {
 
   function airdrop(address _toAddr, uint fullTokens) public onlyController {
 
-    uint tokenAmount = fullTokens * 10**scale;
+    require (campaignState != 0);
+
+    uint tokenAmount = fullTokens * scale;
 
     if (!participantList[_toAddr].participatedFlag) {
 
@@ -723,7 +773,10 @@ contract TokenCampaign is Controlled {
 
     }
 
-    participantList[_toAddr].allocatedTokens = participantList[_toAddr].allocatedTokens.add(tokenAmount);
+    participantList[_toAddr].preallocatedTokens = participantList[_toAddr].allocatedTokens.add(tokenAmount);
+
+    // side effect: do_grant_tokens updates the "tokensGenerated" variable
+    require( do_grant_tokens(_toAddr, tokenAmount) );
 
     // notify the world
     Airdropped(_toAddr, fullTokens);
@@ -731,9 +784,17 @@ contract TokenCampaign is Controlled {
   }
 
   function multiAirdrop(address[] addrs, uint[] fullTokens) public onlyController {
+
+    require (campaignState != 0);
+
     for (uint256 iterator = 0; iterator < addrs.length; iterator++) {
       airdrop(addrs[iterator], fullTokens[iterator]);
     }
+  }
+
+  // set individual preCrowd cap
+  function setInvestorsBatchSize(uint256 _batchsize) public onlyController {
+      investorsBatchSize = _batchsize;
   }
 
   // set individual preCrowd cap
@@ -781,19 +842,14 @@ contract TokenCampaign is Controlled {
     rteamVaultAddr = _newAddr;
   }
 
-  function setrjdgVaultAddr(address _newAddr) public onlyController {
+  function setr2VaultAddr(address _newAddr) public onlyController {
     require( _newAddr != 0x0 );
-    rjdgVaultAddr = _newAddr;
+    r2VaultAddr = _newAddr;
   }
 
   function setmmVaultAddr(address _newAddr) public onlyController {
     require( _newAddr != 0x0 );
     mmVaultAddr = _newAddr;
-  }
-
-  function setreserveVaultAddr(address _newAddr) public onlyController {
-    require( _newAddr != 0x0 );
-    reserveVaultAddr = _newAddr;
   }
 
   function settrusteeVaultAddr(address _newAddr) public onlyController {
@@ -822,7 +878,7 @@ contract TokenCampaign is Controlled {
 
   /// @notice This function handles receiving Ether
   function () payable {
-    process_contribution(msg.sender);  
+      process_contribution(msg.sender); 
   }
 
   /// This method can be used by the controller to extract mistakenly

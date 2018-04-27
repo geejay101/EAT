@@ -15,9 +15,9 @@ module.exports = function(callback){
 
 	TokenCampaign.deployed().then(function(instance){
 			console.log(colors.red("# Campaign at " + instance.address))
-			console.log(colors.red("Finalizing campaign"))
+			console.log(colors.red("Allocate tokens to investors"))
 			campaign = instance;
-			return campaign.finalizeCampaign()
+			return campaign.allocateInvestors()
 		})
 		.then(function(returnCode) {
 				console.log(colors.green(" Success: " + returnCode ));

@@ -12,17 +12,7 @@ var stateNames = ["finalized, not accepting funds",
 
 module.exports = function(callback){
 	var campaign;
-	var preCrowdThreshold,goal;
-	var trustee, op, reserve, team;
-	var tokenAddr;
-	var raised, available, generated;
-	var rate;
-	var state;
-	var minc;
-	var isPaused;
-	var tEnd, presaleEnd;
 
-	
 	TokenCampaign.deployed().then(
 		function(instance){
 			console.log(colors.blue("# Campaign at " + instance.address))
@@ -32,14 +22,14 @@ module.exports = function(callback){
 			function(){
 				return Promise.all([
 
-					campaign.preCrowdTokenThreshold.call().then(
-						(x)=>{preCrowdThreshold = x}),
+					campaign.controller.call().then(
+						(x)=>{issuer = x}),
 
 					campaign.reserveVaultAddr.call().then(
 						(x)=>{reserve = x}),
 
 					campaign.opVaultAddr.call().then(
-						(x)=>{op = x}),
+						(x)=>{operator = x}),
 
 					campaign.trusteeVaultAddr.call().then(
 						(x)=>{trustee = x}),
@@ -50,11 +40,14 @@ module.exports = function(callback){
 					campaign.paused.call().then(
 						(x)=>{isPaused = x}),
 
-					campaign.tPreCrowdStageEnd.call().then(
-						(x)=>{presaleEnd = x}),
+					campaign.t_1st_StageEnd.call().then(
+						(x)=>{stage_1_End = x}),
 
-					campaign.teamVaultAddr.call().then(
-						(x)=>{team = x}),
+					campaign.t_2nd_StageEnd.call().then(
+						(x)=>{stage_2_End = x}),
+
+					campaign.tCampaignEnd.call().then(
+						(x)=>{tEnd = x}),
 
 					campaign.decimals.call().then(
 						(x)=>{decimals = x}),
@@ -62,55 +55,71 @@ module.exports = function(callback){
 					campaign.scale.call().then(
 						(x)=>{scale = x}),
 
-					campaign.minContribution.call().then(
-						(x)=>{minc = x/1000000000000000000}),
-
-					campaign.get_rate.call().then(
-						(x)=>{rate = x}),
-
-					campaign.tCampaignEnd.call().then(
-						(x)=>{tEnd = x}),
-
 					campaign.tokensGenerated.call().then(
 						(x)=>{generated = x}),
 
 					campaign.amountRaised.call().then(
 						(x)=>{raised = x/1000000000000000000}),
 
+					campaign.contractBalance.call().then(
+						(x)=>{balance = x/1000000000000000000}),
+
 					campaign.campaignState.call().then(
-						(x)=>{state = x})])
+						(x)=>{state = x}),
+
+					campaign.investorCount.call().then(
+						(x)=>{investors = x}),
+
+					campaign.investorsBatchSize.call().then(
+						(x)=>{batchsize = x}),
+
+					campaign.investorsProcessed.call().then(
+						(x)=>{investorsprocessed = x}),
+
+					campaign.isWhiteListed.call().then(
+						(x)=>{isWhiteListing = x})
+					])
 			})
 		.then(
 			function(){
 
 				console.log(colors.white.bold("# Campaign State: " + state + " - (" + stateNames[state] +")"));
 				console.log(" Paused: " + isPaused);
+				console.log(" Whitelist enabled: " + isWhiteListing);
 				console.log(" Parameters:")
 				console.log("   Token: " + tokenAddr);
 				console.log("      Decimals: " + decimals );
 				console.log("      Scale:" + scale);
+				console.log("   Issuer: " + issuer);
 				console.log("   Trustee: " + trustee)	;	
-				console.log("   Bounty: " + reserve);
-				console.log("   Team: " + team);	
-				console.log("   Bounty: " + reserve);
+				console.log("   Reserve: " + reserve);
+				console.log("   Operator: " + operator);
 				
-				console.log(" Presale threshold: " + preCrowdThreshold/scale );
-				var secondsLeft = (presaleEnd - Date.now()/1000);
+				var secondsLeft = (stage_1_End - Date.now()/1000);
 				var minutesLeft = secondsLeft/60;
 				var hoursLeft = minutesLeft/60
-				console.log(" Presale ends: " + presaleEnd + "( in " + minutesLeft + " minutes)" );
-				console.log(" Presale goal reached: " + goal);
+				console.log(" Stage 1 ends: " + stage_1_End + "( in " + minutesLeft + " minutes)" );
 
-				console.log(" Min contribution: " + minc );
-				console.log(" Generated Tokens: " + generated/scale );
-				console.log(" Current rate:" + rate/scale);
-				console.log(" Funds raised: " + raised);
+				var secondsLeft = (stage_2_End - Date.now()/1000);
+				var minutesLeft = secondsLeft/60;
+				var hoursLeft = minutesLeft/60
+				console.log(" Stage 2 ends: " + stage_2_End + "( in " + minutesLeft + " minutes)" );
+
 				secondsLeft = (tEnd - Date.now()/1000);
 				minutesLeft = secondsLeft/60;
 				hoursLeft = minutesLeft/60
 				console.log(" Ends : " + tEnd + " (" + (tEnd - Date.now()/1000) + " = " + minutesLeft + " minutes )" );
 
-				//console.log("   Allow generate: " + allowGen);	
+				console.log(" Generated Tokens: " + generated/scale );
+				console.log(" Funds raised: " + raised);
+				console.log(" Contract balance: " + balance);
+
+				console.log(" Investors: " + investors);
+				console.log(" Investors Batch Size: " + batchsize);
+				console.log(" Investors processed: " + investorsprocessed);
+
+
+
 			});  		
 } 	
 

@@ -1,6 +1,14 @@
 // Print info
 var colors = require('colors/safe');
 
+//var args = process.argv.slice(2);
+var args = require('minimist')(process.argv.slice(2),
+{
+  string: [ 'investor' ]
+});
+
+var batchsize = args['batchsize'];
+
 var TokenCampaign = artifacts.require("TokenCampaign");	
 
 var stateNames = ["finalized, not accepting funds",
@@ -15,9 +23,9 @@ module.exports = function(callback){
 
 	TokenCampaign.deployed().then(function(instance){
 			console.log(colors.red("# Campaign at " + instance.address))
-			console.log(colors.red("Finalizing campaign"))
+			console.log(colors.red("Set Batch size"))
 			campaign = instance;
-			return campaign.finalizeCampaign()
+			return campaign.setInvestorsBatchSize(batchsize)
 		})
 		.then(function(returnCode) {
 				console.log(colors.green(" Success: " + returnCode ));
@@ -25,3 +33,5 @@ module.exports = function(callback){
 				console.log(colors.red(" Error: " + returnCode ));
 		}); 
 }
+
+

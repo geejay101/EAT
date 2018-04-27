@@ -7,17 +7,17 @@ var TokenFactory = artifacts.require("MiniMeTokenFactory");
 // addresses in our private test net
 // CHANGE before deploy
 
-var issuerAddr = 	'0x627306090abaB3A6e1400e9345bC60c78a8BEf57'; // test account 1
-var dteamAddr1 = 	'0xf17f52151EbEF6C7334FAD080c5704D77216b732'; // test account 2
-var dteamAddr2 = 	'0xf17f52151EbEF6C7334FAD080c5704D77216b732';
-var dteamAddr3 = 	'0xf17f52151EbEF6C7334FAD080c5704D77216b732';
-var dteamAddr4 = 	'0xf17f52151EbEF6C7334FAD080c5704D77216b732';
-var rteamAddress = 	'0x2932b7A2355D6fecc4b5c0B6BD44cC31df247a2e'; // test account 6
-var rjdgAddress = 	'0x0F4F2Ac550A1b4e2280d04c21cEa7EBD822934b5'; // test account 8
-var mmAddress = 	'0x6330A553Fc93768F612722BB8c2eC78aC90B3bbc'; // test account 9
-var trusteeAddr = 	'0xC5fdf4076b8F3A5357c5E395ab970B5B54098Fef'; // test account 3
-var opAddr = 		'0x0d1d4e623D10F9FBA5Db95830F7d3839406C6AF2'; // test account 5
-var reserveAddr = 	'0x821aEa9a577a9b44299B9c15c88cf3087F3b5544'; // test account 4
+var issuerAddr = 	'0x8c45cC725024DFDCc46E12afA364efabd266E648'; // test account 1
+var dteamAddr1 = 	'0x02e5496C52a92C6086424418e3EC08997D01549D'; //x
+var dteamAddr2 = 	'0x1d247AA35E722A25e1ac8210895f2BFCebD1f7Ce'; //x
+var dteamAddr3 = 	'0xC6ce19A1690f4a949bc71bEEfcBd227A52b13987'; //x
+var dteamAddr4 = 	'0xb80B6F95C7711caD4FA62a8C65891F58b25E6eA8'; //x
+var rteamAddress = 	'0xeBe98C1d09EBd3e994f82fA72071f2604f4F9452'; //x
+var r2Address = 	'0x18899838A2d38353fDa812E67c9b448777F16337'; //x
+var mmAddress = 	'0x5cbb15e9fd72e6483ad61e7d692551019ff477c3'; //x
+var trusteeAddr = 	'0x0aA973F3cBd41E97e4655b4A777A72956483bA0f'; //x
+var opAddr = 		'0xEa73fa8249Cf85Ab0f0EbFBC18788Ef5fB155FFc'; //x
+var reserveAddr = 	'0x0aA973F3cBd41E97e4655b4A777A72956483bA0f'; //x
 
 // need them globaly
 var tokenAddr;
@@ -52,7 +52,7 @@ module.exports = function(deployer, network, accounts) {
 					dteamAddr3,
 					dteamAddr4,
 					rteamAddress,
-					rjdgAddress,
+					r2Address,
 					mmAddress,
 					trusteeAddr,
 					opAddr,

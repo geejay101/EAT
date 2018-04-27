@@ -15,9 +15,9 @@ module.exports = function(callback){
 
 	TokenCampaign.deployed().then(function(instance){
 			console.log(colors.red("# Campaign at " + instance.address))
-			console.log(colors.red("Finalizing campaign"))
+			console.log(colors.red("disabling whitelisting"))
 			campaign = instance;
-			return campaign.finalizeCampaign()
+			return campaign.toggleWhitelist(false)
 		})
 		.then(function(returnCode) {
 				console.log(colors.green(" Success: " + returnCode ));

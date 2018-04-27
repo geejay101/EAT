@@ -8,24 +8,22 @@ var stateNames = ["finalized, not accepting funds",
 				  "active, main sale, accepting funds",
 				  "active, pre-sale ?",
 				  "passive, not accepting funds"]; 
-
+	
 
 module.exports = function(callback){
 	var campaign;
 
-	TokenCampaign.deployed().then(
-		function(instance){
+	TokenCampaign.deployed().then(function(instance){
 			console.log(colors.red("# Campaign at " + instance.address))
 			console.log(colors.red("resume sale"))
 			campaign = instance;
-			return campaign.resumeSale()})
-		.then(
-			function(returnCode){
-				
-				console.log(" return code: " + returnCode );
-
-			});  		
-} 	
-
+			return campaign.resumeSale()
+		})
+		.then(function(returnCode) {
+				console.log(colors.green(" Success: " + returnCode ));
+		}).catch(function(e) {
+				console.log(colors.red(" Error: " + returnCode ));
+		}); 
+}
 
 
